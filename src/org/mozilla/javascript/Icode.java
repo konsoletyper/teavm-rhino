@@ -112,8 +112,6 @@ abstract class Icode {
         Icode_ONE                       = -52,
 
     // entrance and exit from .()
-       Icode_ENTERDQ                    = -53,
-       Icode_LEAVEDQ                    = -54,
 
        Icode_TAIL_CALL                  = -55,
 
@@ -205,8 +203,6 @@ abstract class Icode {
           case Icode_UNDEF:            return "UNDEF";
           case Icode_ZERO:             return "ZERO";
           case Icode_ONE:              return "ONE";
-          case Icode_ENTERDQ:          return "ENTERDQ";
-          case Icode_LEAVEDQ:          return "LEAVEDQ";
           case Icode_TAIL_CALL:        return "TAIL_CALL";
           case Icode_LOCAL_CLEAR:      return "LOCAL_CLEAR";
           case Icode_LITERAL_GETTER:   return "LITERAL_GETTER";

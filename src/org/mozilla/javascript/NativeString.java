@@ -6,13 +6,10 @@
 
 package org.mozilla.javascript;
 
+import org.mozilla.javascript.regexp.NativeRegExp;
+
 import static org.mozilla.javascript.ScriptRuntime.rangeError;
 import static org.mozilla.javascript.ScriptRuntimeES6.requireObjectCoercible;
-
-import java.text.Collator;
-import java.text.Normalizer;
-
-import org.mozilla.javascript.regexp.NativeRegExp;
 
 /**
  * This class implements the String native object.
@@ -401,16 +398,8 @@ final class NativeString extends IdScriptableObject
                 }
                 // ECMA-262 1 5.5.4.9
                 case Id_localeCompare: {
-                    // For now, create and configure a collator instance. I can't
-                    // actually imagine that this'd be slower than caching them
-                    // a la ClassCache, so we aren't trying to outsmart ourselves
-                    // with a caching mechanism for now.
-                    Collator collator = Collator.getInstance(cx.getLocale());
-                    collator.setStrength(Collator.IDENTICAL);
-                    collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
-                    return ScriptRuntime.wrapNumber(collator.compare(
-                        ScriptRuntime.toString(thisObj),
-                        ScriptRuntime.toString(args, 0)));
+                    return ScriptRuntime.wrapNumber(
+                        ScriptRuntime.toString(thisObj).compareTo(ScriptRuntime.toString(args, 0)));
                 }
                 case Id_toLocaleLowerCase: {
                     return ScriptRuntime.toString(thisObj)
@@ -463,16 +452,7 @@ final class NativeString extends IdScriptableObject
                 }
                 case Id_normalize:
                 {
-                    String formStr = ScriptRuntime.toString(args, 0);
-
-                    Normalizer.Form form;
-                    if (Normalizer.Form.NFD.name().equals(formStr)) form = Normalizer.Form.NFD;
-                    else if (Normalizer.Form.NFKC.name().equals(formStr)) form = Normalizer.Form.NFKC;
-                    else if (Normalizer.Form.NFKD.name().equals(formStr)) form = Normalizer.Form.NFKD;
-                    else if (Normalizer.Form.NFC.name().equals(formStr) || args.length == 0) form = Normalizer.Form.NFC;
-                    else throw rangeError("The normalization form should be one of NFC, NFD, NFKC, NFKD");
-
-                    return Normalizer.normalize(ScriptRuntime.toString(requireObjectCoercible(cx, thisObj, f)), form);
+                    return ScriptRuntime.toString(args, 0);
                 }
 
                 case Id_repeat:

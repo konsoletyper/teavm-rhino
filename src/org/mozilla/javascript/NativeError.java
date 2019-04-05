@@ -7,7 +7,6 @@
 package org.mozilla.javascript;
 
 import java.io.Serializable;
-import java.lang.reflect.Method;
 
 /**
  *
@@ -20,19 +19,6 @@ final class NativeError extends IdScriptableObject
     static final long serialVersionUID = -5338413581437645187L;
 
     private static final Object ERROR_TAG = "Error";
-
-    private static final Method ERROR_DELEGATE_GET_STACK;
-    private static final Method ERROR_DELEGATE_SET_STACK;
-
-    static {
-        try {
-            // Pre-cache methods to be called via reflection
-            ERROR_DELEGATE_GET_STACK = NativeError.class.getMethod("getStackDelegated", Scriptable.class);
-            ERROR_DELEGATE_SET_STACK = NativeError.class.getMethod("setStackDelegated", Scriptable.class, Object.class);
-        } catch (NoSuchMethodException nsm) {
-            throw new RuntimeException(nsm);
-        }
-    }
 
     /** Default stack limit is set to "Infinity", here represented as a negative int */
     public static final int DEFAULT_STACK_LIMIT = -1;
@@ -95,10 +81,23 @@ final class NativeError extends IdScriptableObject
         associateValue(ProtoProps.KEY, protoProps);
 
         // Define constructor properties that delegate to the ProtoProps object.
-        ctor.defineProperty("stackTraceLimit", protoProps,
-                            ProtoProps.GET_STACK_LIMIT, ProtoProps.SET_STACK_LIMIT, 0);
-        ctor.defineProperty("prepareStackTrace", protoProps,
-                            ProtoProps.GET_PREPARE_STACK, ProtoProps.SET_PREPARE_STACK, 0);
+        ctor.defineProperty(Context.getContext(), "stackTraceLimit",
+            new CallableFunction((cx, scope, thisObject, args) -> protoProps.getStackTraceLimit()),
+            new CallableFunction((cx, scope, thisObject, args) -> {
+                protoProps.setStackTraceLimit(thisObject, args[0]);
+                return Undefined.instance;
+            }),
+            0
+        );
+
+        ctor.defineProperty(Context.getContext(), "prepareStackTrace",
+            new CallableFunction((cx, scope, thisObject, args) -> protoProps.getPrepareStackTrace()),
+            new CallableFunction((cx, scope, thisObject, args) -> {
+                protoProps.setPrepareStackTrace(thisObject, args[0]);
+                return Undefined.instance;
+            }),
+            0
+        );
 
         super.fillConstructorProperties(ctor);
     }
@@ -163,9 +162,14 @@ final class NativeError extends IdScriptableObject
         // the getter and setter below.
         if (stackProvider == null) {
             stackProvider = re;
-            defineProperty("stack", this,
-                           ERROR_DELEGATE_GET_STACK, ERROR_DELEGATE_SET_STACK,
-                           DONTENUM);
+            defineProperty(Context.getContext(), "stack",
+                new CallableFunction((cx, scope, thisObj, args) -> getStackDelegated(thisObj)),
+                new CallableFunction((cx, scope, thisObj, args) -> {
+                    setStackDelegated(thisObj, args[0]);
+                    return Undefined.instance;
+                }),
+                0
+            );
         }
     }
 
@@ -310,12 +314,6 @@ final class NativeError extends IdScriptableObject
                 err.associateValue(STACK_HIDE_KEY, Context.toString(funcName));
             }
         }
-
-        // Define a property on the specified object to get that stack
-        // that delegates to our new error. Build the stack trace lazily
-        // using the "getStack" code from NativeError.
-        obj.defineProperty("stack", err,
-                           ERROR_DELEGATE_GET_STACK, ERROR_DELEGATE_SET_STACK, 0);
     }
 
     @Override
@@ -358,21 +356,6 @@ final class NativeError extends IdScriptableObject
     {
         static final String KEY = "_ErrorPrototypeProps";
 
-        static final Method GET_STACK_LIMIT;
-        static final Method SET_STACK_LIMIT;
-        static final Method GET_PREPARE_STACK;
-        static final Method SET_PREPARE_STACK;
-
-        static {
-            try {
-                GET_STACK_LIMIT = ProtoProps.class.getMethod("getStackTraceLimit", Scriptable.class);
-                SET_STACK_LIMIT = ProtoProps.class.getMethod("setStackTraceLimit", Scriptable.class, Object.class);
-                GET_PREPARE_STACK = ProtoProps.class.getMethod("getPrepareStackTrace", Scriptable.class);
-                SET_PREPARE_STACK = ProtoProps.class.getMethod("setPrepareStackTrace", Scriptable.class, Object.class);
-            } catch (NoSuchMethodException nsm) {
-                throw new RuntimeException(nsm);
-            }
-        }
 
         private static final long serialVersionUID = 1907180507775337939L;
 

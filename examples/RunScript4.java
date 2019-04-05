@@ -24,7 +24,7 @@ public class RunScript4 {
 
             // Use the Counter class to define a Counter constructor
             // and prototype in JavaScript.
-            ScriptableObject.defineClass(scope, Counter.class);
+            //ScriptableObject.defineClass(scope, Counter.class);
 
             // Create an instance of Counter and assign it to
             // the top-level variable "myCounter". This is

@@ -134,10 +134,6 @@ final class EqualObjectGraphs  {
             return o2 instanceof Set<?> && equalSets((Set<?>)o1, (Set<?>)o2);
         } else if (o1 instanceof NativeGlobal) {
             return o2 instanceof NativeGlobal; // stateless objects
-        } else if (o1 instanceof JavaAdapter) {
-            return o2 instanceof JavaAdapter; // stateless objects
-        } else if (o1 instanceof NativeJavaTopPackage) {
-            return o2 instanceof NativeJavaTopPackage; // stateless objects
         }
 
         // Fallback case for everything else.
@@ -165,8 +161,6 @@ final class EqualObjectGraphs  {
         // Handle special Scriptable implementations
         if (s1 instanceof NativeContinuation) {
             return s2 instanceof NativeContinuation && NativeContinuation.equalImplementations((NativeContinuation)s1, (NativeContinuation)s2);
-        } else if (s1 instanceof NativeJavaPackage) {
-            return s1.equals(s2); // Overridden appropriately
         } else if (s1 instanceof IdFunctionObject) {
             return s2 instanceof IdFunctionObject && IdFunctionObject.equalObjectGraphs((IdFunctionObject)s1, (IdFunctionObject)s2, this);
         } else if (s1 instanceof InterpretedFunction) {

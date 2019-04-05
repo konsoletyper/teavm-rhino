@@ -132,8 +132,8 @@ public class PrimitiveTypeScopeResolutionTest
       // define object with custom method
       final MyObject myObject = new MyObject();
       final String[] functionNames = { "readPropFoo" };
-      myObject.defineFunctionProperties(functionNames, MyObject.class,
-          ScriptableObject.EMPTY);
+      /*myObject.defineFunctionProperties(functionNames, MyObject.class,
+          ScriptableObject.EMPTY);*/
 
       final String scriptScope1 = "String.prototype.foo = 'from 1'; scope2.f()";
 

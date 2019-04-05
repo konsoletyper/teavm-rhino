@@ -8,9 +8,6 @@
 
 package org.mozilla.javascript;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-
 /**
  * Factory class that Rhino runtime uses to create new {@link Context}
  * instances.  A <code>ContextFactory</code> can also notify listeners
@@ -255,11 +252,6 @@ public class ContextFactory
           case Context.FEATURE_PARENT_PROTO_PROPERTIES:
             return true;
 
-          case Context.FEATURE_E4X:
-            version = cx.getLanguageVersion();
-            return (version == Context.VERSION_DEFAULT
-                    || version >= Context.VERSION_1_6);
-
           case Context.FEATURE_DYNAMIC_SCOPE:
             return false;
 
@@ -303,97 +295,6 @@ public class ContextFactory
         throw new IllegalArgumentException(String.valueOf(featureIndex));
     }
 
-    private boolean isDom3Present() {
-        Class<?> nodeClass = Kit.classOrNull("org.w3c.dom.Node");
-        if (nodeClass == null) return false;
-        // Check to see whether DOM3 is present; use a new method defined in
-        // DOM3 that is vital to our implementation
-        try {
-            nodeClass.getMethod("getUserData", new Class<?>[] { String.class });
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Provides a default
-     * {@link org.mozilla.javascript.xml.XMLLib.Factory XMLLib.Factory}
-     * to be used by the <code>Context</code> instances produced by this
-     * factory. See {@link Context#getE4xImplementationFactory} for details.
-     *
-     * May return null, in which case E4X functionality is not supported in
-     * Rhino.
-     *
-     * The default implementation now prefers the DOM3 E4X implementation.
-     */
-    protected org.mozilla.javascript.xml.XMLLib.Factory
-        getE4xImplementationFactory()
-    {
-        // Must provide default implementation, rather than abstract method,
-        // so that past implementors of ContextFactory do not fail at runtime
-        // upon invocation of this method.
-        // Note that the default implementation returns null if we
-        // neither have XMLBeans nor a DOM3 implementation present.
-
-        if (isDom3Present()) {
-            return org.mozilla.javascript.xml.XMLLib.Factory.create(
-                "org.mozilla.javascript.xmlimpl.XMLLibImpl"
-            );
-        }
-        return null;
-    }
-
-
-    /**
-     * Create class loader for generated classes.
-     * This method creates an instance of the default implementation
-     * of {@link GeneratedClassLoader}. Rhino uses this interface to load
-     * generated JVM classes when no {@link SecurityController}
-     * is installed.
-     * Application can override the method to provide custom class loading.
-     */
-    protected GeneratedClassLoader createClassLoader(final ClassLoader parent)
-    {
-        return AccessController.doPrivileged(new PrivilegedAction<DefiningClassLoader>() {
-            @Override
-            public DefiningClassLoader run(){
-                return new DefiningClassLoader(parent);
-            }
-        });
-    }
-
-    /**
-     * Get ClassLoader to use when searching for Java classes.
-     * Unless it was explicitly initialized with
-     * {@link #initApplicationClassLoader(ClassLoader)} the method returns
-     * null to indicate that Thread.getContextClassLoader() should be used.
-     */
-    public final ClassLoader getApplicationClassLoader()
-    {
-        return applicationClassLoader;
-    }
-
-    /**
-     * Set explicit class loader to use when searching for Java classes.
-     *
-     * @see #getApplicationClassLoader()
-     */
-    public final void initApplicationClassLoader(ClassLoader loader)
-    {
-        if (loader == null)
-            throw new IllegalArgumentException("loader is null");
-        if (!Kit.testIfCanLoadRhinoClasses(loader))
-            throw new IllegalArgumentException(
-                "Loader can not resolve Rhino classes");
-
-        if (this.applicationClassLoader != null)
-            throw new IllegalStateException(
-                "applicationClassLoader can only be set once");
-        checkNotSealed();
-
-        this.applicationClassLoader = loader;
-    }
 
     /**
      * Execute top call to script or function.

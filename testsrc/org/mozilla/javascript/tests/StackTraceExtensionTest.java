@@ -1,19 +1,14 @@
 package org.mozilla.javascript.tests;
 
-import static org.junit.Assert.assertFalse;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.mozilla.javascript.*;
 
 import java.io.FileReader;
 import java.io.IOException;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.RhinoException;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.StackStyle;
-import org.mozilla.javascript.tools.shell.Global;
+import static org.junit.Assert.assertFalse;
 
 public class StackTraceExtensionTest
 {
@@ -50,7 +45,7 @@ public class StackTraceExtensionTest
             cx.setOptimizationLevel(opt);
             cx.setGeneratingDebug(true);
 
-            Global global = new Global(cx);
+            Scriptable global = cx.initStandardObjects();
             Scriptable root = cx.newObject(global);
 
             FileReader rdr = new FileReader("testsrc/jstests/extensions/stack-traces.js");

@@ -13,60 +13,37 @@ final class InterpretedFunction extends NativeFunction implements Script
     static final long serialVersionUID = 541475680333911468L;
 
     InterpreterData idata;
-    SecurityController securityController;
     Object securityDomain;
 
-    private InterpretedFunction(InterpreterData idata,
-                                Object staticSecurityDomain)
+    private InterpretedFunction(InterpreterData idata)
     {
         this.idata = idata;
-
-        // Always get Context from the current thread to
-        // avoid security breaches via passing mangled Context instances
-        // with bogus SecurityController
-        Context cx = Context.getContext();
-        SecurityController sc = cx.getSecurityController();
-        Object dynamicDomain;
-        if (sc != null) {
-            dynamicDomain = sc.getDynamicSecurityDomain(staticSecurityDomain);
-        } else {
-            if (staticSecurityDomain != null) {
-                throw new IllegalArgumentException();
-            }
-            dynamicDomain = null;
-        }
-
-        this.securityController = sc;
-        this.securityDomain = dynamicDomain;
     }
 
     private InterpretedFunction(InterpretedFunction parent, int index)
     {
         this.idata = parent.idata.itsNestedFunctions[index];
-        this.securityController = parent.securityController;
         this.securityDomain = parent.securityDomain;
     }
 
     /**
      * Create script from compiled bytecode.
      */
-    static InterpretedFunction createScript(InterpreterData idata,
-                                            Object staticSecurityDomain)
+    static InterpretedFunction createScript(InterpreterData idata)
     {
         InterpretedFunction f;
-        f = new InterpretedFunction(idata, staticSecurityDomain);
+        f = new InterpretedFunction(idata);
         return f;
     }
 
     /**
      * Create function compiled from Function(...) constructor.
      */
-    static InterpretedFunction createFunction(Context cx,Scriptable scope,
-                                              InterpreterData idata,
-                                              Object staticSecurityDomain)
+    static InterpretedFunction createFunction(Context cx, Scriptable scope,
+        InterpreterData idata)
     {
         InterpretedFunction f;
-        f = new InterpretedFunction(idata, staticSecurityDomain);
+        f = new InterpretedFunction(idata);
         f.initScriptFunction(cx, scope);
         return f;
     }

@@ -1,17 +1,12 @@
 package org.mozilla.javascript.benchmarks;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.util.HashMap;
-
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.mozilla.javascript.Context;
-import org.mozilla.javascript.tools.shell.Global;
+import org.mozilla.javascript.Scriptable;
+
+import java.io.*;
+import java.util.HashMap;
 
 public class SunSpiderBenchmark
 {
@@ -42,7 +37,7 @@ public class SunSpiderBenchmark
             Context cx = Context.enter();
             cx.setLanguageVersion(Context.VERSION_1_8);
             cx.setOptimizationLevel(optLevel);
-            Global root = new Global(cx);
+            Scriptable root = cx.initStandardObjects();
             root.put("RUN_NAME", root, "SunSpider-" + optLevel);
             Object result = cx.evaluateReader(root, rdr, TEST_SRC, 1, null);
             results.put(optLevel, result.toString());

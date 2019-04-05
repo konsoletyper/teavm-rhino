@@ -8,29 +8,16 @@
 
 package org.mozilla.javascript;
 
+import org.mozilla.javascript.debug.DebuggableObject;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Member;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-
-import org.mozilla.javascript.annotations.JSConstructor;
-import org.mozilla.javascript.annotations.JSFunction;
-import org.mozilla.javascript.annotations.JSGetter;
-import org.mozilla.javascript.annotations.JSSetter;
-import org.mozilla.javascript.annotations.JSStaticFunction;
-import org.mozilla.javascript.debug.DebuggableObject;
 
 /**
  * This is the default implementation of the Scriptable interface. This
@@ -131,15 +118,6 @@ public abstract class ScriptableObject implements Scriptable,
     private boolean isExtensible = true;
     private boolean isSealed = false;
 
-    private static final Method GET_ARRAY_LENGTH;
-
-    static {
-        try {
-            GET_ARRAY_LENGTH = ScriptableObject.class.getMethod("getExternalArrayLength");
-        } catch (NoSuchMethodException nsm) {
-            throw new RuntimeException(nsm);
-        }
-    }
 
     /**
      * This is the object that is stored in the SlotMap. For historical reasons it remains
@@ -246,24 +224,11 @@ public abstract class ScriptableObject implements Scriptable,
                 desc.defineProperty("writable", (attr & READONLY) == 0, EMPTY);
             }
 
-            String fName = name == null ? "f" : name.toString();
             if (getter != null) {
-                if ( getter instanceof MemberBox ) {
-                    desc.defineProperty("get", new FunctionObject(fName, ((MemberBox)getter).member(), scope), EMPTY);
-                } else if ( getter instanceof Member ) {
-                    desc.defineProperty("get", new FunctionObject(fName, (Member)getter, scope), EMPTY);
-                } else {
-                    desc.defineProperty("get", getter, EMPTY);
-                }
+                desc.defineProperty("get", getter, EMPTY);
             }
             if (setter != null) {
-                if ( setter instanceof MemberBox ) {
-                    desc.defineProperty("set", new FunctionObject(fName, ((MemberBox) setter).member(), scope), EMPTY);
-                } else if ( setter instanceof Member ) {
-                    desc.defineProperty("set", new FunctionObject(fName, (Member) setter, scope), EMPTY);
-                } else {
-                    desc.defineProperty("set", setter, EMPTY);
-                }
+                desc.defineProperty("set", setter, EMPTY);
             }
             return desc;
         }
@@ -290,26 +255,7 @@ public abstract class ScriptableObject implements Scriptable,
                 }
             } else {
                 Context cx = Context.getContext();
-                if (setter instanceof MemberBox) {
-                    MemberBox nativeSetter = (MemberBox)setter;
-                    Class<?> pTypes[] = nativeSetter.getParameterTypes();
-                    // XXX: cache tag since it is already calculated in
-                    // defineProperty ?
-                    Class<?> valueType = pTypes[pTypes.length - 1];
-                    int tag = FunctionObject.getTypeTag(valueType);
-                    Object actualArg = FunctionObject.convertArg(cx, start,
-                                                                 value, tag);
-                    Object setterThis;
-                    Object[] args;
-                    if (nativeSetter.delegateTo == null) {
-                        setterThis = start;
-                        args = new Object[] { actualArg };
-                    } else {
-                        setterThis = nativeSetter.delegateTo;
-                        args = new Object[] { start, actualArg };
-                    }
-                    nativeSetter.invoke(setterThis, args);
-                } else if (setter instanceof Function) {
+                if (setter instanceof Function) {
                     Function f = (Function)setter;
                     f.call(cx, f.getParentScope(), start,
                            new Object[] { value });
@@ -322,35 +268,14 @@ public abstract class ScriptableObject implements Scriptable,
         @Override
         Object getValue(Scriptable start) {
             if (getter != null) {
-                if (getter instanceof MemberBox) {
-                    MemberBox nativeGetter = (MemberBox)getter;
-                    Object getterThis;
-                    Object[] args;
-                    if (nativeGetter.delegateTo == null) {
-                        getterThis = start;
-                        args = ScriptRuntime.emptyArgs;
-                    } else {
-                        getterThis = nativeGetter.delegateTo;
-                        args = new Object[] { start };
-                    }
-                    return nativeGetter.invoke(getterThis, args);
-                } else if (getter instanceof Function) {
+                if (getter instanceof Function) {
                     Function f = (Function)getter;
                     Context cx = Context.getContext();
                     return f.call(cx, f.getParentScope(), start,
                                   ScriptRuntime.emptyArgs);
                 }
             }
-            Object val = this.value;
-            if (val instanceof LazilyLoadedCtor) {
-                LazilyLoadedCtor initializer = (LazilyLoadedCtor)val;
-                try {
-                    initializer.init();
-                } finally {
-                    this.value = val = initializer.getValue();
-                }
-            }
-            return val;
+            return this.value;
         }
     }
 
@@ -364,10 +289,6 @@ public abstract class ScriptableObject implements Scriptable,
 
     private SlotMapContainer createSlotMap(int initialSize)
     {
-        Context cx = Context.getCurrentContext();
-        if ((cx != null) && cx.hasFeature(Context.FEATURE_THREAD_SAFE_OBJECTS)) {
-            return new ThreadSafeSlotMapContainer(initialSize);
-        }
         return new SlotMapContainer(initialSize);
     }
 
@@ -892,20 +813,6 @@ public abstract class ScriptableObject implements Scriptable,
         return false;
     }
 
-    void addLazilyInitializedValue(String name, int index,
-                                   LazilyLoadedCtor init, int attributes)
-    {
-        if (name != null && index != 0)
-            throw new IllegalArgumentException(name);
-        checkNotSealed(name, index);
-        GetterSlot gslot = (GetterSlot)slotMap.get(name, index,
-            SlotAccess.MODIFY_GETTER_SETTER);
-        gslot.setAttributes(attributes);
-        gslot.getter = null;
-        gslot.setter = null;
-        gslot.value = init;
-    }
-
     /**
      * Attach the specified object to this object, and delegate all indexed property lookups to it. In other words,
      * if the object has 3 elements, then an attempt to look up or modify "[0]", "[1]", or "[2]" will be delegated
@@ -922,10 +829,6 @@ public abstract class ScriptableObject implements Scriptable,
 
         if (array == null) {
             delete("length");
-        } else {
-            // Define "length" to return whatever length the List gives us.
-            defineProperty("length", null,
-                           GET_ARRAY_LENGTH, null, READONLY | DONTENUM);
         }
     }
 
@@ -1137,491 +1040,6 @@ public abstract class ScriptableObject implements Scriptable,
     }
 
     /**
-     * Defines JavaScript objects from a Java class that implements Scriptable.
-     *
-     * If the given class has a method
-     * <pre>
-     * static void init(Context cx, Scriptable scope, boolean sealed);</pre>
-     *
-     * or its compatibility form
-     * <pre>
-     * static void init(Scriptable scope);</pre>
-     *
-     * then it is invoked and no further initialization is done.<p>
-     *
-     * However, if no such a method is found, then the class's constructors and
-     * methods are used to initialize a class in the following manner.<p>
-     *
-     * First, the zero-parameter constructor of the class is called to
-     * create the prototype. If no such constructor exists,
-     * a {@link EvaluatorException} is thrown. <p>
-     *
-     * Next, all methods are scanned for special prefixes that indicate that they
-     * have special meaning for defining JavaScript objects.
-     * These special prefixes are
-     * <ul>
-     * <li><code>jsFunction_</code> for a JavaScript function
-     * <li><code>jsStaticFunction_</code> for a JavaScript function that
-     *           is a property of the constructor
-     * <li><code>jsGet_</code> for a getter of a JavaScript property
-     * <li><code>jsSet_</code> for a setter of a JavaScript property
-     * <li><code>jsConstructor</code> for a JavaScript function that
-     *           is the constructor
-     * </ul><p>
-     *
-     * If the method's name begins with "jsFunction_", a JavaScript function
-     * is created with a name formed from the rest of the Java method name
-     * following "jsFunction_". So a Java method named "jsFunction_foo" will
-     * define a JavaScript method "foo". Calling this JavaScript function
-     * will cause the Java method to be called. The parameters of the method
-     * must be of number and types as defined by the FunctionObject class.
-     * The JavaScript function is then added as a property
-     * of the prototype. <p>
-     *
-     * If the method's name begins with "jsStaticFunction_", it is handled
-     * similarly except that the resulting JavaScript function is added as a
-     * property of the constructor object. The Java method must be static.
-     *
-     * If the method's name begins with "jsGet_" or "jsSet_", the method is
-     * considered to define a property. Accesses to the defined property
-     * will result in calls to these getter and setter methods. If no
-     * setter is defined, the property is defined as READONLY.<p>
-     *
-     * If the method's name is "jsConstructor", the method is
-     * considered to define the body of the constructor. Only one
-     * method of this name may be defined. You may use the varargs forms
-     * for constructors documented in {@link FunctionObject#FunctionObject(String, Member, Scriptable)}
-     *
-     * If no method is found that can serve as constructor, a Java
-     * constructor will be selected to serve as the JavaScript
-     * constructor in the following manner. If the class has only one
-     * Java constructor, that constructor is used to define
-     * the JavaScript constructor. If the the class has two constructors,
-     * one must be the zero-argument constructor (otherwise an
-     * {@link EvaluatorException} would have already been thrown
-     * when the prototype was to be created). In this case
-     * the Java constructor with one or more parameters will be used
-     * to define the JavaScript constructor. If the class has three
-     * or more constructors, an {@link EvaluatorException}
-     * will be thrown.<p>
-     *
-     * Finally, if there is a method
-     * <pre>
-     * static void finishInit(Scriptable scope, FunctionObject constructor,
-     *                        Scriptable prototype)</pre>
-     *
-     * it will be called to finish any initialization. The <code>scope</code>
-     * argument will be passed, along with the newly created constructor and
-     * the newly created prototype.<p>
-     *
-     * @param scope The scope in which to define the constructor.
-     * @param clazz The Java class to use to define the JavaScript objects
-     *              and properties.
-     * @exception IllegalAccessException if access is not available
-     *            to a reflected class member
-     * @exception InstantiationException if unable to instantiate
-     *            the named class
-     * @exception InvocationTargetException if an exception is thrown
-     *            during execution of methods of the named class
-     * @see org.mozilla.javascript.Function
-     * @see org.mozilla.javascript.FunctionObject
-     * @see org.mozilla.javascript.ScriptableObject#READONLY
-     * @see org.mozilla.javascript.ScriptableObject
-     *      #defineProperty(String, Class, int)
-     */
-    public static <T extends Scriptable> void defineClass(
-            Scriptable scope, Class<T> clazz)
-        throws IllegalAccessException, InstantiationException,
-               InvocationTargetException
-    {
-        defineClass(scope, clazz, false, false);
-    }
-
-    /**
-     * Defines JavaScript objects from a Java class, optionally
-     * allowing sealing.
-     *
-     * Similar to <code>defineClass(Scriptable scope, Class clazz)</code>
-     * except that sealing is allowed. An object that is sealed cannot have
-     * properties added or removed. Note that sealing is not allowed in
-     * the current ECMA/ISO language specification, but is likely for
-     * the next version.
-     *
-     * @param scope The scope in which to define the constructor.
-     * @param clazz The Java class to use to define the JavaScript objects
-     *              and properties. The class must implement Scriptable.
-     * @param sealed Whether or not to create sealed standard objects that
-     *               cannot be modified.
-     * @exception IllegalAccessException if access is not available
-     *            to a reflected class member
-     * @exception InstantiationException if unable to instantiate
-     *            the named class
-     * @exception InvocationTargetException if an exception is thrown
-     *            during execution of methods of the named class
-     * @since 1.4R3
-     */
-    public static <T extends Scriptable> void defineClass(
-            Scriptable scope, Class<T> clazz, boolean sealed)
-        throws IllegalAccessException, InstantiationException,
-               InvocationTargetException
-    {
-        defineClass(scope, clazz, sealed, false);
-    }
-
-    /**
-     * Defines JavaScript objects from a Java class, optionally
-     * allowing sealing and mapping of Java inheritance to JavaScript
-     * prototype-based inheritance.
-     *
-     * Similar to <code>defineClass(Scriptable scope, Class clazz)</code>
-     * except that sealing and inheritance mapping are allowed. An object
-     * that is sealed cannot have properties added or removed. Note that
-     * sealing is not allowed in the current ECMA/ISO language specification,
-     * but is likely for the next version.
-     *
-     * @param scope The scope in which to define the constructor.
-     * @param clazz The Java class to use to define the JavaScript objects
-     *              and properties. The class must implement Scriptable.
-     * @param sealed Whether or not to create sealed standard objects that
-     *               cannot be modified.
-     * @param mapInheritance Whether or not to map Java inheritance to
-     *                       JavaScript prototype-based inheritance.
-     * @return the class name for the prototype of the specified class
-     * @exception IllegalAccessException if access is not available
-     *            to a reflected class member
-     * @exception InstantiationException if unable to instantiate
-     *            the named class
-     * @exception InvocationTargetException if an exception is thrown
-     *            during execution of methods of the named class
-     * @since 1.6R2
-     */
-    public static <T extends Scriptable> String defineClass(
-            Scriptable scope, Class<T> clazz, boolean sealed,
-            boolean mapInheritance)
-        throws IllegalAccessException, InstantiationException,
-               InvocationTargetException
-    {
-        BaseFunction ctor = buildClassCtor(scope, clazz, sealed,
-                                           mapInheritance);
-        if (ctor == null)
-            return null;
-        String name = ctor.getClassPrototype().getClassName();
-        defineProperty(scope, name, ctor, ScriptableObject.DONTENUM);
-        return name;
-    }
-
-    static <T extends Scriptable> BaseFunction buildClassCtor(
-            Scriptable scope, Class<T> clazz,
-            boolean sealed,
-            boolean mapInheritance)
-        throws IllegalAccessException, InstantiationException,
-               InvocationTargetException
-    {
-        Method[] methods = FunctionObject.getMethodList(clazz);
-        for (int i=0; i < methods.length; i++) {
-            Method method = methods[i];
-            if (!method.getName().equals("init"))
-                continue;
-            Class<?>[] parmTypes = method.getParameterTypes();
-            if (parmTypes.length == 3 &&
-                parmTypes[0] == ScriptRuntime.ContextClass &&
-                parmTypes[1] == ScriptRuntime.ScriptableClass &&
-                parmTypes[2] == Boolean.TYPE &&
-                Modifier.isStatic(method.getModifiers()))
-            {
-                Object args[] = { Context.getContext(), scope,
-                                  sealed ? Boolean.TRUE : Boolean.FALSE };
-                method.invoke(null, args);
-                return null;
-            }
-            if (parmTypes.length == 1 &&
-                parmTypes[0] == ScriptRuntime.ScriptableClass &&
-                Modifier.isStatic(method.getModifiers()))
-            {
-                Object args[] = { scope };
-                method.invoke(null, args);
-                return null;
-            }
-
-        }
-
-        // If we got here, there isn't an "init" method with the right
-        // parameter types.
-
-        Constructor<?>[] ctors = clazz.getConstructors();
-        Constructor<?> protoCtor = null;
-        for (int i=0; i < ctors.length; i++) {
-            if (ctors[i].getParameterTypes().length == 0) {
-                protoCtor = ctors[i];
-                break;
-            }
-        }
-        if (protoCtor == null) {
-            throw Context.reportRuntimeError1(
-                      "msg.zero.arg.ctor", clazz.getName());
-        }
-
-        Scriptable proto = (Scriptable) protoCtor.newInstance(ScriptRuntime.emptyArgs);
-        String className = proto.getClassName();
-
-        // check for possible redefinition
-        Object existing = getProperty(getTopLevelScope(scope), className);
-        if (existing instanceof BaseFunction) {
-            Object existingProto = ((BaseFunction)existing).getPrototypeProperty();
-            if (existingProto != null && clazz.equals(existingProto.getClass())) {
-                return (BaseFunction)existing;
-            }
-        }
-
-        // Set the prototype's prototype, trying to map Java inheritance to JS
-        // prototype-based inheritance if requested to do so.
-        Scriptable superProto = null;
-        if (mapInheritance) {
-            Class<? super T> superClass = clazz.getSuperclass();
-            if (ScriptRuntime.ScriptableClass.isAssignableFrom(superClass) &&
-                !Modifier.isAbstract(superClass.getModifiers()))
-            {
-                Class<? extends Scriptable> superScriptable =
-                    extendsScriptable(superClass);
-                String name = ScriptableObject.defineClass(scope,
-                        superScriptable, sealed, mapInheritance);
-                if (name != null) {
-                    superProto = ScriptableObject.getClassPrototype(scope, name);
-                }
-            }
-        }
-        if (superProto == null) {
-            superProto = ScriptableObject.getObjectPrototype(scope);
-        }
-        proto.setPrototype(superProto);
-
-        // Find out whether there are any methods that begin with
-        // "js". If so, then only methods that begin with special
-        // prefixes will be defined as JavaScript entities.
-        final String functionPrefix = "jsFunction_";
-        final String staticFunctionPrefix = "jsStaticFunction_";
-        final String getterPrefix = "jsGet_";
-        final String setterPrefix = "jsSet_";
-        final String ctorName = "jsConstructor";
-
-        Member ctorMember = findAnnotatedMember(methods, JSConstructor.class);
-        if (ctorMember == null) {
-            ctorMember = findAnnotatedMember(ctors, JSConstructor.class);
-        }
-        if (ctorMember == null) {
-            ctorMember = FunctionObject.findSingleMethod(methods, ctorName);
-        }
-        if (ctorMember == null) {
-            if (ctors.length == 1) {
-                ctorMember = ctors[0];
-            } else if (ctors.length == 2) {
-                if (ctors[0].getParameterTypes().length == 0)
-                    ctorMember = ctors[1];
-                else if (ctors[1].getParameterTypes().length == 0)
-                    ctorMember = ctors[0];
-            }
-            if (ctorMember == null) {
-                throw Context.reportRuntimeError1(
-                          "msg.ctor.multiple.parms", clazz.getName());
-            }
-        }
-
-        FunctionObject ctor = new FunctionObject(className, ctorMember, scope);
-        if (ctor.isVarArgsMethod()) {
-            throw Context.reportRuntimeError1
-                ("msg.varargs.ctor", ctorMember.getName());
-        }
-        ctor.initAsConstructor(scope, proto);
-
-        Method finishInit = null;
-        HashSet<String> staticNames = new HashSet<String>(),
-                        instanceNames = new HashSet<String>();
-        for (Method method : methods) {
-            if (method == ctorMember) {
-                continue;
-            }
-            String name = method.getName();
-            if (name.equals("finishInit")) {
-                Class<?>[] parmTypes = method.getParameterTypes();
-                if (parmTypes.length == 3 &&
-                    parmTypes[0] == ScriptRuntime.ScriptableClass &&
-                    parmTypes[1] == FunctionObject.class &&
-                    parmTypes[2] == ScriptRuntime.ScriptableClass &&
-                    Modifier.isStatic(method.getModifiers()))
-                {
-                    finishInit = method;
-                    continue;
-                }
-            }
-            // ignore any compiler generated methods.
-            if (name.indexOf('$') != -1)
-                continue;
-            if (name.equals(ctorName))
-                continue;
-
-            Annotation annotation = null;
-            String prefix = null;
-            if (method.isAnnotationPresent(JSFunction.class)) {
-                annotation = method.getAnnotation(JSFunction.class);
-            } else if (method.isAnnotationPresent(JSStaticFunction.class)) {
-                annotation = method.getAnnotation(JSStaticFunction.class);
-            } else if (method.isAnnotationPresent(JSGetter.class)) {
-                annotation = method.getAnnotation(JSGetter.class);
-            } else if (method.isAnnotationPresent(JSSetter.class)) {
-                continue;
-            }
-
-            if (annotation == null) {
-                if (name.startsWith(functionPrefix)) {
-                    prefix = functionPrefix;
-                } else if (name.startsWith(staticFunctionPrefix)) {
-                    prefix = staticFunctionPrefix;
-                } else if (name.startsWith(getterPrefix)) {
-                    prefix = getterPrefix;
-                } else {
-                    // note that setterPrefix is among the unhandled names here -
-                    // we deal with that when we see the getter
-                    continue;
-                }
-            }
-
-            boolean isStatic = annotation instanceof JSStaticFunction
-                    || prefix == staticFunctionPrefix;
-            HashSet<String> names = isStatic ? staticNames : instanceNames;
-            String propName = getPropertyName(name, prefix, annotation);
-            if (names.contains(propName)) {
-                throw Context.reportRuntimeError2("duplicate.defineClass.name",
-                        name, propName);
-            }
-            names.add(propName);
-            name = propName;
-
-            if (annotation instanceof JSGetter || prefix == getterPrefix) {
-                if (!(proto instanceof ScriptableObject)) {
-                    throw Context.reportRuntimeError2(
-                        "msg.extend.scriptable",
-                        proto.getClass().toString(), name);
-                }
-                Method setter = findSetterMethod(methods, name, setterPrefix);
-                int attr = ScriptableObject.PERMANENT |
-                           ScriptableObject.DONTENUM  |
-                           (setter != null ? 0
-                                           : ScriptableObject.READONLY);
-                ((ScriptableObject) proto).defineProperty(name, null,
-                                                          method, setter,
-                                                          attr);
-                continue;
-            }
-
-            if (isStatic && !Modifier.isStatic(method.getModifiers())) {
-                throw Context.reportRuntimeError(
-                        "jsStaticFunction must be used with static method.");
-            }
-
-            FunctionObject f = new FunctionObject(name, method, proto);
-            if (f.isVarArgsConstructor()) {
-                throw Context.reportRuntimeError1
-                    ("msg.varargs.fun", ctorMember.getName());
-            }
-            defineProperty(isStatic ? ctor : proto, name, f, DONTENUM);
-            if (sealed) {
-                f.sealObject();
-            }
-        }
-
-        // Call user code to complete initialization if necessary.
-        if (finishInit != null) {
-            Object[] finishArgs = { scope, ctor, proto };
-            finishInit.invoke(null, finishArgs);
-        }
-
-        // Seal the object if necessary.
-        if (sealed) {
-            ctor.sealObject();
-            if (proto instanceof ScriptableObject) {
-                ((ScriptableObject) proto).sealObject();
-            }
-        }
-
-        return ctor;
-    }
-
-    private static Member findAnnotatedMember(AccessibleObject[] members,
-                                              Class<? extends Annotation> annotation) {
-        for (AccessibleObject member : members) {
-            if (member.isAnnotationPresent(annotation)) {
-                return (Member) member;
-            }
-        }
-        return null;
-    }
-
-    private static Method findSetterMethod(Method[] methods,
-                                           String name,
-                                           String prefix) {
-        String newStyleName = "set"
-                + Character.toUpperCase(name.charAt(0))
-                + name.substring(1);
-        for (Method method : methods) {
-            JSSetter annotation = method.getAnnotation(JSSetter.class);
-            if (annotation != null) {
-                if (name.equals(annotation.value()) ||
-                        ("".equals(annotation.value()) && newStyleName.equals(method.getName()))) {
-                    return method;
-                }
-            }
-        }
-        String oldStyleName = prefix + name;
-        for (Method method : methods) {
-            if (oldStyleName.equals(method.getName())) {
-                return method;
-            }
-        }
-        return null;
-    }
-
-    private static String getPropertyName(String methodName,
-                                          String prefix,
-                                          Annotation annotation) {
-        if (prefix != null) {
-            return methodName.substring(prefix.length());
-        }
-        String propName = null;
-        if (annotation instanceof JSGetter) {
-            propName = ((JSGetter) annotation).value();
-            if (propName == null || propName.length() == 0) {
-                if (methodName.length() > 3 && methodName.startsWith("get")) {
-                    propName = methodName.substring(3);
-                    if (Character.isUpperCase(propName.charAt(0))) {
-                        if (propName.length() == 1) {
-                            propName = propName.toLowerCase();
-                        } else if (!Character.isUpperCase(propName.charAt(1))){
-                            propName = Character.toLowerCase(propName.charAt(0))
-                                    + propName.substring(1);
-                        }
-                    }
-                }
-            }
-        } else if (annotation instanceof JSFunction) {
-            propName = ((JSFunction) annotation).value();
-        } else if (annotation instanceof JSStaticFunction) {
-            propName = ((JSStaticFunction) annotation).value();
-        }
-        if (propName == null || propName.length() == 0) {
-            propName = methodName;
-        }
-        return propName;
-    }
-
-    @SuppressWarnings({"unchecked"})
-    private static <T extends Scriptable> Class<T> extendsScriptable(Class<?> c)
-    {
-        if (ScriptRuntime.ScriptableClass.isAssignableFrom(c))
-            return (Class<T>) c;
-        return null;
-    }
-
-    /**
      * Define a JavaScript property.
      *
      * Creates the property with an initial value and sets its attributes.
@@ -1691,181 +1109,6 @@ public abstract class ScriptableObject implements Scriptable,
             cp.defineConst(propertyName, destination);
         } else
             defineProperty(destination, propertyName, Undefined.instance, CONST);
-    }
-
-    /**
-     * Define a JavaScript property with getter and setter side effects.
-     *
-     * If the setter is not found, the attribute READONLY is added to
-     * the given attributes. <p>
-     *
-     * The getter must be a method with zero parameters, and the setter, if
-     * found, must be a method with one parameter.<p>
-     *
-     * @param propertyName the name of the property to define. This name
-     *                    also affects the name of the setter and getter
-     *                    to search for. If the propertyId is "foo", then
-     *                    <code>clazz</code> will be searched for "getFoo"
-     *                    and "setFoo" methods.
-     * @param clazz the Java class to search for the getter and setter
-     * @param attributes the attributes of the JavaScript property
-     * @see org.mozilla.javascript.Scriptable#put(String, Scriptable, Object)
-     */
-    public void defineProperty(String propertyName, Class<?> clazz,
-                               int attributes)
-    {
-        int length = propertyName.length();
-        if (length == 0) throw new IllegalArgumentException();
-        char[] buf = new char[3 + length];
-        propertyName.getChars(0, length, buf, 3);
-        buf[3] = Character.toUpperCase(buf[3]);
-        buf[0] = 'g';
-        buf[1] = 'e';
-        buf[2] = 't';
-        String getterName = new String(buf);
-        buf[0] = 's';
-        String setterName = new String(buf);
-
-        Method[] methods = FunctionObject.getMethodList(clazz);
-        Method getter = FunctionObject.findSingleMethod(methods, getterName);
-        Method setter = FunctionObject.findSingleMethod(methods, setterName);
-        if (setter == null)
-            attributes |= ScriptableObject.READONLY;
-        defineProperty(propertyName, null, getter,
-                       setter == null ? null : setter, attributes);
-    }
-
-    /**
-     * Define a JavaScript property.
-     *
-     * Use this method only if you wish to define getters and setters for
-     * a given property in a ScriptableObject. To create a property without
-     * special getter or setter side effects, use
-     * <code>defineProperty(String,int)</code>.
-     *
-     * If <code>setter</code> is null, the attribute READONLY is added to
-     * the given attributes.<p>
-     *
-     * Several forms of getters or setters are allowed. In all cases the
-     * type of the value parameter can be any one of the following types:
-     * Object, String, boolean, Scriptable, byte, short, int, long, float,
-     * or double. The runtime will perform appropriate conversions based
-     * upon the type of the parameter (see description in FunctionObject).
-     * The first forms are nonstatic methods of the class referred to
-     * by 'this':
-     * <pre>
-     * Object getFoo();
-     * void setFoo(SomeType value);</pre>
-     * Next are static methods that may be of any class; the object whose
-     * property is being accessed is passed in as an extra argument:
-     * <pre>
-     * static Object getFoo(Scriptable obj);
-     * static void setFoo(Scriptable obj, SomeType value);</pre>
-     * Finally, it is possible to delegate to another object entirely using
-     * the <code>delegateTo</code> parameter. In this case the methods are
-     * nonstatic methods of the class delegated to, and the object whose
-     * property is being accessed is passed in as an extra argument:
-     * <pre>
-     * Object getFoo(Scriptable obj);
-     * void setFoo(Scriptable obj, SomeType value);</pre>
-     *
-     * @param propertyName the name of the property to define.
-     * @param delegateTo an object to call the getter and setter methods on,
-     *                   or null, depending on the form used above.
-     * @param getter the method to invoke to get the value of the property
-     * @param setter the method to invoke to set the value of the property
-     * @param attributes the attributes of the JavaScript property
-     */
-    public void defineProperty(String propertyName, Object delegateTo,
-                               Method getter, Method setter, int attributes)
-    {
-        MemberBox getterBox = null;
-        if (getter != null) {
-            getterBox = new MemberBox(getter);
-
-            boolean delegatedForm;
-            if (!Modifier.isStatic(getter.getModifiers())) {
-                delegatedForm = (delegateTo != null);
-                getterBox.delegateTo = delegateTo;
-            } else {
-                delegatedForm = true;
-                // Ignore delegateTo for static getter but store
-                // non-null delegateTo indicator.
-                getterBox.delegateTo = Void.TYPE;
-            }
-
-            String errorId = null;
-            Class<?>[] parmTypes = getter.getParameterTypes();
-            if (parmTypes.length == 0) {
-                if (delegatedForm) {
-                    errorId = "msg.obj.getter.parms";
-                }
-            } else if (parmTypes.length == 1) {
-                Object argType = parmTypes[0];
-                // Allow ScriptableObject for compatibility
-                if (!(argType == ScriptRuntime.ScriptableClass ||
-                      argType == ScriptRuntime.ScriptableObjectClass))
-                {
-                    errorId = "msg.bad.getter.parms";
-                } else if (!delegatedForm) {
-                    errorId = "msg.bad.getter.parms";
-                }
-            } else {
-                errorId = "msg.bad.getter.parms";
-            }
-            if (errorId != null) {
-                throw Context.reportRuntimeError1(errorId, getter.toString());
-            }
-        }
-
-        MemberBox setterBox = null;
-        if (setter != null) {
-            if (setter.getReturnType() != Void.TYPE)
-                throw Context.reportRuntimeError1("msg.setter.return",
-                                                  setter.toString());
-
-            setterBox = new MemberBox(setter);
-
-            boolean delegatedForm;
-            if (!Modifier.isStatic(setter.getModifiers())) {
-                delegatedForm = (delegateTo != null);
-                setterBox.delegateTo = delegateTo;
-            } else {
-                delegatedForm = true;
-                // Ignore delegateTo for static setter but store
-                // non-null delegateTo indicator.
-                setterBox.delegateTo = Void.TYPE;
-            }
-
-            String errorId = null;
-            Class<?>[] parmTypes = setter.getParameterTypes();
-            if (parmTypes.length == 1) {
-                if (delegatedForm) {
-                    errorId = "msg.setter2.expected";
-                }
-            } else if (parmTypes.length == 2) {
-                Object argType = parmTypes[0];
-                // Allow ScriptableObject for compatibility
-                if (!(argType == ScriptRuntime.ScriptableClass ||
-                      argType == ScriptRuntime.ScriptableObjectClass))
-                {
-                    errorId = "msg.setter2.parms";
-                } else if (!delegatedForm) {
-                    errorId = "msg.setter1.parms";
-                }
-            } else {
-                errorId = "msg.setter.parms";
-            }
-            if (errorId != null) {
-                throw Context.reportRuntimeError1(errorId, setter.toString());
-            }
-        }
-
-        GetterSlot gslot = (GetterSlot)slotMap.get(propertyName, 0,
-            SlotAccess.MODIFY_GETTER_SETTER);
-        gslot.setAttributes(attributes);
-        gslot.getter = getterBox;
-        gslot.setter = setterBox;
     }
 
     /**
@@ -1963,6 +1206,34 @@ public abstract class ScriptableObject implements Scriptable,
             }
             slot.setAttributes(attributes);
         }
+    }
+
+    public void defineProperty(Context cx, Object id, Function getter, Function setter, int attributes) {
+        Slot slot = getSlot(cx, id, SlotAccess.QUERY);
+
+        if (slot == null) { // new slot
+            slot = getSlot(cx, id,  SlotAccess.MODIFY_GETTER_SETTER);
+            attributes |= DONTENUM | READONLY | PERMANENT;
+        } else {
+            attributes |= slot.getAttributes();
+        }
+
+        if (!(slot instanceof GetterSlot) ) {
+            slot = getSlot(cx, id, SlotAccess.MODIFY_GETTER_SETTER);
+        }
+
+        GetterSlot gslot = (GetterSlot) slot;
+
+        if (getter != NOT_FOUND && getter != null) {
+            gslot.getter = getter;
+        }
+        if (setter != NOT_FOUND && setter != null) {
+            gslot.setter = setter;
+        }
+
+        gslot.value = Undefined.instance;
+        gslot.setAttributes(attributes);
+
     }
 
     protected void checkPropertyDefinition(ScriptableObject desc) {
@@ -2133,35 +1404,6 @@ public abstract class ScriptableObject implements Scriptable,
     }
 
     /**
-     * Search for names in a class, adding the resulting methods
-     * as properties.
-     *
-     * <p> Uses reflection to find the methods of the given names. Then
-     * FunctionObjects are constructed from the methods found, and
-     * are added to this object as properties with the given names.
-     *
-     * @param names the names of the Methods to add as function properties
-     * @param clazz the class to search for the Methods
-     * @param attributes the attributes of the new properties
-     * @see org.mozilla.javascript.FunctionObject
-     */
-    public void defineFunctionProperties(String[] names, Class<?> clazz,
-                                         int attributes)
-    {
-        Method[] methods = FunctionObject.getMethodList(clazz);
-        for (int i=0; i < names.length; i++) {
-            String name = names[i];
-            Method m = FunctionObject.findSingleMethod(methods, name);
-            if (m == null) {
-                throw Context.reportRuntimeError2(
-                    "msg.method.not.found", name, clazz.getName());
-            }
-            FunctionObject f = new FunctionObject(name, m, this);
-            defineProperty(name, f, attributes);
-        }
-    }
-
-    /**
      * Get the Object.prototype property.
      * See ECMA 15.2.4.
      * @param scope an object in the scope chain
@@ -2260,23 +1502,7 @@ public abstract class ScriptableObject implements Scriptable,
      */
     public void sealObject() {
         if (!isSealed) {
-            final long stamp = slotMap.readLock();
-            try {
-                for (Slot slot : slotMap) {
-                    Object value = slot.value;
-                    if (value instanceof LazilyLoadedCtor) {
-                        LazilyLoadedCtor initializer = (LazilyLoadedCtor) value;
-                        try {
-                            initializer.init();
-                        } finally {
-                            slot.value = initializer.getValue();
-                        }
-                    }
-                }
-                isSealed = true;
-            } finally {
-                slotMap.unlockRead(stamp);
-            }
+            isSealed = true;
         }
     }
 
@@ -2342,33 +1568,6 @@ public abstract class ScriptableObject implements Scriptable,
     }
 
     /**
-     * Gets an indexed property from an object or any object in its prototype
-     * chain and coerces it to the requested Java type.
-     * <p>
-     * Searches the prototype chain for a property with integral index
-     * <code>index</code>. Note that if you wish to look for properties with numerical
-     * but non-integral indicies, you should use getProperty(Scriptable,String) with
-     * the string value of the index.
-     * <p>
-     * @param s a JavaScript object
-     * @param index an integral index
-     * @param type the required Java type of the result
-     * @return the value of a property with name <code>name</code> found in
-     *         <code>obj</code> or any object in its prototype chain, or
-     *         null if not found. Note that it does not return
-     *         {@link Scriptable#NOT_FOUND} as it can ordinarily not be
-     *         converted to most of the types.
-     * @since 1.7R3
-     */
-    public static <T> T getTypedProperty(Scriptable s, int index, Class<T> type) {
-        Object val = getProperty(s, index);
-        if(val == Scriptable.NOT_FOUND) {
-            val = null;
-        }
-        return type.cast(Context.jsToJava(val, type));
-    }
-
-    /**
      * Gets an indexed property from an object or any object in its prototype chain.
      * <p>
      * Searches the prototype chain for a property with integral index
@@ -2394,30 +1593,6 @@ public abstract class ScriptableObject implements Scriptable,
             obj = obj.getPrototype();
         } while (obj != null);
         return result;
-    }
-
-    /**
-     * Gets a named property from an object or any object in its prototype chain
-     * and coerces it to the requested Java type.
-     * <p>
-     * Searches the prototype chain for a property named <code>name</code>.
-     * <p>
-     * @param s a JavaScript object
-     * @param name a property name
-     * @param type the required Java type of the result
-     * @return the value of a property with name <code>name</code> found in
-     *         <code>obj</code> or any object in its prototype chain, or
-     *         null if not found. Note that it does not return
-     *         {@link Scriptable#NOT_FOUND} as it can ordinarily not be
-     *         converted to most of the types.
-     * @since 1.7R3
-     */
-    public static <T> T getTypedProperty(Scriptable s, String name, Class<T> type) {
-        Object val = getProperty(s, name);
-        if(val == Scriptable.NOT_FOUND) {
-            val = null;
-        }
-        return type.cast(Context.jsToJava(val, type));
     }
 
     /**

@@ -8,7 +8,6 @@ import java.util.HashMap;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Script;
 import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.tools.shell.Global;
 
 import com.google.caliper.AfterExperiment;
 import com.google.caliper.BeforeExperiment;
@@ -62,7 +61,7 @@ public class CaliperSpiderBenchmark
             cx = Context.enter();
             cx.setOptimizationLevel(optLevel);
             cx.setLanguageVersion(Context.VERSION_ES6);
-            scope = new Global(cx);
+            scope = cx.initStandardObjects();
 
             for (String bn : BENCHMARKS) {
                 compileScript(cx, bn);

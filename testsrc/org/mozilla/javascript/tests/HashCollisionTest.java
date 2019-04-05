@@ -1,13 +1,13 @@
 package org.mozilla.javascript.tests;
 
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.StringWriter;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mozilla.javascript.Context;
-import org.mozilla.javascript.tools.shell.Global;
+import org.mozilla.javascript.Scriptable;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.StringWriter;
 
 public class HashCollisionTest {
   private static final String mediumInput = "testsrc/jstests/collisions.json";
@@ -50,7 +50,7 @@ public class HashCollisionTest {
     FileReader scriptIn = new FileReader("testsrc/jstests/hash-collisions.js");
     Context cx = Context.enter();
     try {
-      Global glob = new Global(cx);
+      Scriptable glob = cx.initStandardObjects();
       glob.put("collisions", glob, collisions);
       cx.evaluateReader(glob, scriptIn, "hash-collisons.js", 1, null);
     } finally {

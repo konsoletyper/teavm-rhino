@@ -1,18 +1,12 @@
 package org.mozilla.javascript.tests;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import org.mozilla.javascript.*;
 
 import java.io.FileReader;
 import java.io.IOException;
 
-import org.junit.Test;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.NativeArray;
-import org.mozilla.javascript.RhinoException;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.Undefined;
-import org.mozilla.javascript.tools.shell.Global;
+import static org.junit.Assert.assertEquals;
 
 public class ComparatorTest {
 
@@ -77,8 +71,7 @@ public class ComparatorTest {
     throws IOException
   {
     Context cx = Context.enter();
-    Global global = new Global(cx);
-    Scriptable root = cx.newObject(global);
+    Scriptable root = cx.newObject(cx.initStandardObjects());
     FileReader fr = new FileReader("testsrc/jstests/extensions/custom-comparators.js");
 
     try {

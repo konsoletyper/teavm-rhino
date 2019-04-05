@@ -1,3 +1,8 @@
+# TeaVM fork of Rhino
+
+This is subset of original Rhino with stripped off reflection. This allows to run Rhino interpreter in TeaVM.
+
+
 # Rhino: JavaScript in Java
 
 ![Rhino](https://developer.mozilla.org/@api/deki/files/832/=Rhino.jpg)

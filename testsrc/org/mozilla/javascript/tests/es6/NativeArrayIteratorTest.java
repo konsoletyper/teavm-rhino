@@ -4,14 +4,6 @@
 
 package org.mozilla.javascript.tests.es6;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,7 +11,10 @@ import org.mozilla.javascript.Context;
 import org.mozilla.javascript.NativeArrayIterator;
 import org.mozilla.javascript.NativeArrayIterator.ARRAY_ITERATOR_TYPE;
 import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.tools.shell.Global;
+
+import java.io.*;
+
+import static org.junit.Assert.assertEquals;
 
 public class NativeArrayIteratorTest
 {
@@ -33,8 +28,7 @@ public class NativeArrayIteratorTest
         cx.setLanguageVersion(Context.VERSION_ES6);
         cx.setGeneratingDebug(true);
 
-        Global global = new Global(cx);
-        root = cx.newObject(global);
+        root = cx.newObject(cx.initStandardObjects());
     }
 
     @After

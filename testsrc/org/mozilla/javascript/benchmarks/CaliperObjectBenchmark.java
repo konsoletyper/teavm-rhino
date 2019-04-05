@@ -1,19 +1,17 @@
 package org.mozilla.javascript.benchmarks;
 
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Random;
-
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
-import org.mozilla.javascript.Scriptable;
-import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.tools.shell.Global;
-
 import com.google.caliper.AfterExperiment;
 import com.google.caliper.BeforeExperiment;
 import com.google.caliper.Benchmark;
 import com.google.caliper.Param;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Function;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.ScriptableObject;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Random;
 
 @SuppressWarnings("unused")
 public class CaliperObjectBenchmark
@@ -53,7 +51,7 @@ public class CaliperObjectBenchmark
             cx.setOptimizationLevel(optLevel);
             cx.setLanguageVersion(Context.VERSION_ES6);
 
-            scope = new Global(cx);
+            scope = cx.initStandardObjects();
             runCode(cx, scope, "testsrc/benchmarks/caliper/fieldTests.js");
 
             Object[] sarray = new Object[stringKeys];

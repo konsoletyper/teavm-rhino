@@ -22,8 +22,8 @@ public class RunScript2 {
 
             // Add a global variable "out" that is a JavaScript reflection
             // of System.out
-            Object jsOut = Context.javaToJS(System.out, scope);
-            ScriptableObject.putProperty(scope, "out", jsOut);
+            //Object jsOut = Context.javaToJS(System.out, scope);
+            //ScriptableObject.putProperty(scope, "out", jsOut);
 
             String s = "";
             for (int i=0; i < args.length; i++) {

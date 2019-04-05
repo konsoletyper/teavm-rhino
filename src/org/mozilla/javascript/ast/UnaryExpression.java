@@ -13,12 +13,7 @@ import org.mozilla.javascript.Token;
  * {@code ~}, {@code typeof} and {@code delete}.  The type field
  * is set to the appropriate Token type for the operator.  The node length spans
  * from the operator to the end of the operand (for prefix operators) or from
- * the start of the operand to the operator (for postfix).<p>
- *
- * The {@code default xml namespace = &lt;expr&gt;} statement in E4X
- * (JavaScript 1.6) is represented as a {@code UnaryExpression} of node
- * type {@link Token#DEFAULTNAMESPACE}, wrapped with an
- * {@link ExpressionStatement}.
+ * the start of the operand to the operator (for postfix).
  */
 public class UnaryExpression extends AstNode {
 

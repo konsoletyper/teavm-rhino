@@ -20,8 +20,6 @@ import org.mozilla.javascript.Function;
 import org.mozilla.javascript.Script;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.WrappedException;
-import org.mozilla.javascript.serialize.ScriptableInputStream;
-import org.mozilla.javascript.serialize.ScriptableOutputStream;
 
 import junit.framework.TestCase;
 
@@ -79,8 +77,8 @@ public class ContinuationsApiTest extends TestCase {
       try {
           globalScope = cx.initStandardObjects();
           cx.setOptimizationLevel(-1); // must use interpreter mode
-          globalScope.put("myObject", globalScope,
-                  Context.javaToJS(new MyClass(), globalScope));
+          /*globalScope.put("myObject", globalScope,
+                  Context.javaToJS(new MyClass(), globalScope));*/
       } finally {
           Context.exit();
       }
@@ -208,43 +206,6 @@ public class ContinuationsApiTest extends TestCase {
       }
   }
 
-  public void testSerializationWithContinuations()
-      throws IOException, ClassNotFoundException
-  {
-      Context cx = Context.enter();
-      try {
-          cx.setOptimizationLevel(-1); // must use interpreter mode
-          cx.evaluateString(globalScope,
-                  "function f(a) { var k = myObject.f(a); var t = []; return k; }",
-                  "function test source", 1, null);
-          Function f = (Function) globalScope.get("f", globalScope);
-          Object[] args = { 7 };
-          cx.callFunctionWithContinuations(f, globalScope, args);
-          fail("Should throw ContinuationPending");
-      } catch (ContinuationPending pending) {
-          // serialize
-          ByteArrayOutputStream baos = new ByteArrayOutputStream();
-          ScriptableOutputStream sos = new ScriptableOutputStream(baos, globalScope);
-          sos.writeObject(globalScope);
-          sos.writeObject(pending.getContinuation());
-          sos.close();
-          baos.close();
-          byte[] serializedData = baos.toByteArray();
-
-          // deserialize
-          ByteArrayInputStream bais = new ByteArrayInputStream(serializedData);
-          ScriptableInputStream sis = new ScriptableInputStream(bais, globalScope);
-          globalScope = (Scriptable) sis.readObject();
-          Object continuation = sis.readObject();
-          sis.close();
-          bais.close();
-
-          Object result = cx.resumeContinuation(continuation, globalScope, 8);
-          assertEquals(8, ((Number)result).intValue());
-      } finally {
-          Context.exit();
-      }
-  }
 
   public void testContinuationsPrototypesAndSerialization() throws IOException, ClassNotFoundException {
 
@@ -256,7 +217,7 @@ public class ContinuationsApiTest extends TestCase {
           try {
               globalScope = cx.initStandardObjects();
               cx.setOptimizationLevel(-1); // must use interpreter mode
-              globalScope.put("myObject", globalScope, Context.javaToJS(new MyClass(), globalScope));
+              //globalScope.put("myObject", globalScope, Context.javaToJS(new MyClass(), globalScope));
           } finally {
               Context.exit();
           }
@@ -307,52 +268,6 @@ public class ContinuationsApiTest extends TestCase {
           }
       }
 
-  }
-
-  public void testContinuationsInlineFunctionsSerialization() throws IOException, ClassNotFoundException {
-
-      Scriptable globalScope;
-      Context cx = Context.enter();
-      try {
-          globalScope = cx.initStandardObjects();
-          cx.setOptimizationLevel(-1); // must use interpreter mode
-          globalScope.put("myObject", globalScope, Context.javaToJS(new MyClass(), globalScope));
-      } finally {
-          Context.exit();
-      }
-
-      cx = Context.enter();
-      try {
-          cx.setOptimizationLevel(-1); // must use interpreter mode
-          cx.evaluateString(globalScope, "function f(a) { var k = eval(myObject.h()); var t = []; return k; }",
-                  "function test source", 1, null);
-          Function f = (Function) globalScope.get("f", globalScope);
-          Object[] args = { 7 };
-          cx.callFunctionWithContinuations(f, globalScope, args);
-          fail("Should throw ContinuationPending");
-      } catch (ContinuationPending pending) {
-          // serialize
-          ByteArrayOutputStream baos = new ByteArrayOutputStream();
-          ScriptableOutputStream sos = new ScriptableOutputStream(baos, globalScope);
-          sos.writeObject(globalScope);
-          sos.writeObject(pending.getContinuation());
-          sos.close();
-          baos.close();
-          byte[] serializedData = baos.toByteArray();
-
-          // deserialize
-          ByteArrayInputStream bais = new ByteArrayInputStream(serializedData);
-          ScriptableInputStream sis = new ScriptableInputStream(bais, globalScope);
-          globalScope = (Scriptable) sis.readObject();
-          Object continuation = sis.readObject();
-          sis.close();
-          bais.close();
-
-          Object result = cx.resumeContinuation(continuation, globalScope, "2+3");
-          assertEquals(5, ((Number) result).intValue());
-      } finally {
-          Context.exit();
-      }
   }
 
   public void testConsStringSerialization() throws IOException, ClassNotFoundException {

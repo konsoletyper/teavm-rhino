@@ -2,6 +2,7 @@ apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
+apply plugin: 'maven'
 apply plugin: 'jacoco'
 apply plugin: 'distribution'
 apply plugin: 'checkstyle'
@@ -17,15 +18,16 @@ task wrapper(type: Wrapper) {
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 sourceSets {
     main {
         java {
-            srcDirs 'src', 'toolsrc', 'xmlimplsrc'
+            srcDirs 'src'
         }
         resources {
-            srcDirs 'src', 'toolsrc'
+            srcDirs 'src'
             exclude "build.xml"
             exclude "manifest"
         }

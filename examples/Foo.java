@@ -8,8 +8,6 @@ import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Function;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.annotations.JSFunction;
-import org.mozilla.javascript.annotations.JSGetter;
 
 /**
  * An example host object class.
@@ -91,7 +89,6 @@ public class Foo extends ScriptableObject {
      *
      * Resets the counter to 0.
      */
-    @JSFunction
     public void resetCounter() {
         counter = 0;
     }
@@ -102,7 +99,6 @@ public class Foo extends ScriptableObject {
      * If "setCounter" had been defined in this class, the runtime would
      * call the setter when the property is assigned to.
      */
-    @JSGetter
     public int getCounter() {
         return counter++;
     }
@@ -123,7 +119,6 @@ public class Foo extends ScriptableObject {
      *
      * @see org.mozilla.javascript.ScriptableObject#getTopLevelScope
      */
-    @JSFunction
     public static Object varargs(Context cx, Scriptable thisObj,
                                             Object[] args, Function funObj)
     {

@@ -12,8 +12,6 @@ import static org.mozilla.javascript.ScriptableObject.READONLY;
 
 import java.io.Serializable;
 
-import org.mozilla.javascript.xml.XMLLib;
-
 /**
  * This class implements the global native object (function and value
  * properties only).
@@ -57,9 +55,6 @@ public class NativeGlobal implements Serializable, IdFunctionCall
                 break;
               case Id_isNaN:
                 name = "isNaN";
-                break;
-              case Id_isXMLName:
-                name = "isXMLName";
                 break;
               case Id_parseFloat:
                 name = "parseFloat";
@@ -168,14 +163,6 @@ public class NativeGlobal implements Serializable, IdFunctionCall
                         result = (d != d);
                     }
                     return ScriptRuntime.wrapBoolean(result);
-                }
-
-                case Id_isXMLName: {
-                    Object name = (args.length == 0)
-                                  ? Undefined.instance : args[0];
-                    XMLLib xmlLib = XMLLib.extractFromScope(scope);
-                    return ScriptRuntime.wrapBoolean(
-                        xmlLib.isXMLName(cx, name));
                 }
 
                 case Id_parseFloat:
@@ -763,7 +750,6 @@ public class NativeGlobal implements Serializable, IdFunctionCall
         Id_eval                =  6,
         Id_isFinite            =  7,
         Id_isNaN               =  8,
-        Id_isXMLName           =  9,
         Id_parseFloat          = 10,
         Id_parseInt            = 11,
         Id_unescape            = 12,

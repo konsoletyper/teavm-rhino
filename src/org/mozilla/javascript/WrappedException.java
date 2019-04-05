@@ -25,7 +25,8 @@ public class WrappedException extends EvaluatorException
     {
         super("Wrapped "+exception.toString());
         this.exception = exception;
-        Kit.initCause(this, exception);
+
+        initCause(exception);
 
         int[] linep = { 0 };
         String sourceName = Context.getSourcePositionFromStack(linep);

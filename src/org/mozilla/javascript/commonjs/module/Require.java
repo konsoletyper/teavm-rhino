@@ -182,7 +182,7 @@ public class Require extends BaseFunction
                     "require() needs one argument");
         }
 
-        String id = (String)Context.jsToJava(args[0], String.class);
+        String id = ScriptRuntime.toString(args, 0);
         URI uri = null;
         URI base = null;
         if (id.startsWith("./") || id.startsWith("../")) {

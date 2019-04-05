@@ -70,73 +70,7 @@ public class WrapFactory
                 return String.valueOf(((Character)obj).charValue());
             }
         }
-        Class<?> cls = obj.getClass();
-        if (cls.isArray()) {
-            return NativeJavaArray.wrap(scope, obj);
-        }
-        return wrapAsJavaObject(cx, scope, obj, staticType);
-    }
-
-    /**
-     * Wrap an object newly created by a constructor call.
-     * @param cx the current Context for this thread
-     * @param scope the scope of the executing script
-     * @param obj the object to be wrapped
-     * @return the wrapped value.
-     */
-    public Scriptable wrapNewObject(Context cx, Scriptable scope, Object obj)
-    {
-        if (obj instanceof Scriptable) {
-            return (Scriptable)obj;
-        }
-        Class<?> cls = obj.getClass();
-        if (cls.isArray()) {
-            return NativeJavaArray.wrap(scope, obj);
-        }
-        return wrapAsJavaObject(cx, scope, obj, null);
-    }
-
-    /**
-     * Wrap Java object as Scriptable instance to allow full access to its
-     * methods and fields from JavaScript.
-     * <p>
-     * {@link #wrap(Context, Scriptable, Object, Class)} and
-     * {@link #wrapNewObject(Context, Scriptable, Object)} call this method
-     * when they can not convert <tt>javaObject</tt> to JavaScript primitive
-     * value or JavaScript array.
-     * <p>
-     * Subclasses can override the method to provide custom wrappers
-     * for Java objects.
-     * @param cx the current Context for this thread
-     * @param scope the scope of the executing script
-     * @param javaObject the object to be wrapped
-     * @param staticType type hint. If security restrictions prevent to wrap
-                object based on its class, staticType will be used instead.
-     * @return the wrapped value which shall not be null
-     */
-    public Scriptable wrapAsJavaObject(Context cx, Scriptable scope,
-                                       Object javaObject, Class<?> staticType)
-    {
-        return new NativeJavaObject(scope, javaObject, staticType);
-    }
-
-    /**
-     * Wrap a Java class as Scriptable instance to allow access to its static
-     * members and fields and use as constructor from JavaScript.
-     * <p>
-     * Subclasses can override this method to provide custom wrappers for
-     * Java classes.
-     *
-     * @param cx the current Context for this thread
-     * @param scope the scope of the executing script
-     * @param javaClass the class to be wrapped
-     * @return the wrapped value which shall not be null
-     * @since 1.7R3
-     */
-    public Scriptable wrapJavaClass(Context cx, Scriptable scope,
-                                    Class<?> javaClass)
-    {
-        return new NativeJavaClass(scope, javaClass);
+        return obj;
     }
 
     /**

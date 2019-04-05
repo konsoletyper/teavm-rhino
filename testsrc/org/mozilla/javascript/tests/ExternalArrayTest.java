@@ -12,7 +12,6 @@ import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ExternalArrayData;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.tools.shell.Global;
 import org.mozilla.javascript.typedarrays.NativeFloat64Array;
 import org.mozilla.javascript.typedarrays.NativeInt16Array;
 import org.mozilla.javascript.typedarrays.NativeInt32Array;
@@ -29,8 +28,7 @@ public class ExternalArrayTest
         cx.setLanguageVersion(Context.VERSION_1_8);
         cx.setGeneratingDebug(true);
 
-        Global global = new Global(cx);
-        root = cx.newObject(global);
+        root = cx.newObject(cx.initStandardObjects());
     }
 
     @After

@@ -70,8 +70,8 @@ public abstract class ModuleSourceProviderBase implements
             (int)llength;
 
         for(int i = 0; i < ilength; ++i) {
-            final String path = ensureTrailingSlash(
-                    ScriptableObject.getTypedProperty(paths, i, String.class));
+            final String path = ensureTrailingSlash(String.valueOf(
+                    ScriptableObject.getProperty(paths, i)));
             try {
                 URI uri =  new URI(path);
                 if (!uri.isAbsolute()) {

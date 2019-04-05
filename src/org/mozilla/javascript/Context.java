@@ -8,32 +8,21 @@
 
 package org.mozilla.javascript;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.net.URL;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
-
 import org.mozilla.classfile.ClassFileWriter.ClassFileFormatException;
 import org.mozilla.javascript.ast.AstRoot;
 import org.mozilla.javascript.ast.ScriptNode;
 import org.mozilla.javascript.debug.DebuggableScript;
 import org.mozilla.javascript.debug.Debugger;
-import org.mozilla.javascript.xml.XMLLib;
+import org.mozilla.javascript.regexp.RegExpImpl;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.util.*;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 /**
  * This class represents the runtime context of an executing script.
@@ -199,17 +188,6 @@ public class Context
      */
     @Deprecated
     public static final int FEATURE_PARENT_PROTO_PROPRTIES = 5;
-
-    /**
-     * Control if support for E4X(ECMAScript for XML) extension is available.
-     * If hasFeature(FEATURE_E4X) returns true, the XML syntax is available.
-     * <p>
-     * By default {@link #hasFeature(int)} returns true if
-     * the current JS version is set to {@link #VERSION_DEFAULT}
-     * or is at least {@link #VERSION_1_6}.
-     * @since 1.6 Release 1
-     */
-    public static final int FEATURE_E4X = 6;
 
     /**
      * Control if dynamic scope should be used for name access.
@@ -390,7 +368,7 @@ public class Context
         }
         this.factory = factory;
         version = VERSION_DEFAULT;
-        optimizationLevel = codegenClass != null ? 0 : -1;
+        optimizationLevel = 0;
         maximumInterpreterStackDepth = Integer.MAX_VALUE;
     }
 
@@ -564,25 +542,6 @@ public class Context
     @Deprecated
     public static void addContextListener(ContextListener listener)
     {
-        // Special workaround for the debugger
-        String DBG = "org.mozilla.javascript.tools.debugger.Main";
-        if (DBG.equals(listener.getClass().getName())) {
-            Class<?> cl = listener.getClass();
-            Class<?> factoryClass = Kit.classOrNull(
-                "org.mozilla.javascript.ContextFactory");
-            Class<?>[] sig = { factoryClass };
-            Object[] args = { ContextFactory.getGlobal() };
-            try {
-                Method m = cl.getMethod("attachTo", sig);
-                m.invoke(listener, args);
-            } catch (Exception ex) {
-                RuntimeException rex = new RuntimeException();
-                Kit.initCause(rex, ex);
-                throw rex;
-            }
-            return;
-        }
-
         ContextFactory.getGlobal().addListener(listener);
     }
 
@@ -1256,7 +1215,6 @@ public class Context
      *        implementations that don't care about security, this value
      *        may be null.
      * @return the result of evaluating the string
-     * @see org.mozilla.javascript.SecurityController
      */
     public final Object evaluateString(Scriptable scope, String source,
                                        String sourceName, int lineno,
@@ -1505,19 +1463,17 @@ public class Context
             // For compatibility IllegalArgumentException can not be thrown here
             lineno = 0;
         }
-        return compileString(source, null, null, sourceName, lineno,
-                             securityDomain);
+        return compileString(source, null, null, sourceName, lineno);
     }
 
     final Script compileString(String source,
                                Evaluator compiler,
                                ErrorReporter compilationErrorReporter,
-                               String sourceName, int lineno,
-                               Object securityDomain)
+                               String sourceName, int lineno)
     {
         try {
             return (Script) compileImpl(null, null, source, sourceName, lineno,
-                                        securityDomain, false,
+                                        null, false,
                                         compiler, compilationErrorReporter);
         } catch (IOException ioe) {
             // Should not happen when dealing with source as string
@@ -1819,86 +1775,6 @@ public class Context
     }
 
     /**
-     * Convenient method to convert java value to its closest representation
-     * in JavaScript.
-     * <p>
-     * If value is an instance of String, Number, Boolean, Function or
-     * Scriptable, it is returned as it and will be treated as the corresponding
-     * JavaScript type of string, number, boolean, function and object.
-     * <p>
-     * Note that for Number instances during any arithmetic operation in
-     * JavaScript the engine will always use the result of
-     * <tt>Number.doubleValue()</tt> resulting in a precision loss if
-     * the number can not fit into double.
-     * <p>
-     * If value is an instance of Character, it will be converted to string of
-     * length 1 and its JavaScript type will be string.
-     * <p>
-     * The rest of values will be wrapped as LiveConnect objects
-     * by calling {@link WrapFactory#wrap(Context cx, Scriptable scope,
-     * Object obj, Class staticType)} as in:
-     * <pre>
-     *    Context cx = Context.getCurrentContext();
-     *    return cx.getWrapFactory().wrap(cx, scope, value, null);
-     * </pre>
-     *
-     * @param value any Java object
-     * @param scope top scope object
-     * @return value suitable to pass to any API that takes JavaScript values.
-     */
-    public static Object javaToJS(Object value, Scriptable scope)
-    {
-        if (value instanceof String || value instanceof Number
-            || value instanceof Boolean || value instanceof Scriptable)
-        {
-            return value;
-        } else if (value instanceof Character) {
-            return String.valueOf(((Character)value).charValue());
-        } else {
-            Context cx = Context.getContext();
-            return cx.getWrapFactory().wrap(cx, scope, value, null);
-        }
-    }
-
-    /**
-     * Convert a JavaScript value into the desired type.
-     * Uses the semantics defined with LiveConnect3 and throws an
-     * Illegal argument exception if the conversion cannot be performed.
-     * @param value the JavaScript value to convert
-     * @param desiredType the Java type to convert to. Primitive Java
-     *        types are represented using the TYPE fields in the corresponding
-     *        wrapper class in java.lang.
-     * @return the converted value
-     * @throws EvaluatorException if the conversion cannot be performed
-     */
-    public static Object jsToJava(Object value, Class<?> desiredType)
-        throws EvaluatorException
-    {
-        return NativeJavaObject.coerceTypeImpl(desiredType, value);
-    }
-
-    /**
-     * @deprecated
-     * @see #jsToJava(Object, Class)
-     * @throws IllegalArgumentException if the conversion cannot be performed.
-     *         Note that {@link #jsToJava(Object, Class)} throws
-     *         {@link EvaluatorException} instead.
-     */
-    @Deprecated
-    public static Object toType(Object value, Class<?> desiredType)
-        throws IllegalArgumentException
-    {
-        try {
-            return jsToJava(value, desiredType);
-        } catch (EvaluatorException ex) {
-            IllegalArgumentException
-                ex2 = new IllegalArgumentException(ex.getMessage());
-            Kit.initCause(ex2, ex);
-            throw ex2;
-        }
-    }
-
-    /**
      * Rethrow the exception wrapping it as the script runtime exception.
      * Unless the exception is instance of {@link EcmaError} or
      * {@link EvaluatorException} it will be wrapped as
@@ -2023,8 +1899,6 @@ public class Context
             optimizationLevel = -1;
         }
         checkOptimizationLevel(optimizationLevel);
-        if (codegenClass == null)
-            optimizationLevel = -1;
         this.optimizationLevel = optimizationLevel;
     }
 
@@ -2088,30 +1962,6 @@ public class Context
             throw new IllegalArgumentException("Cannot set maximumInterpreterStackDepth to less than 1");
         }
         maximumInterpreterStackDepth = max;
-    }
-
-    /**
-     * Set the security controller for this context.
-     * <p> SecurityController may only be set if it is currently null
-     * and {@link SecurityController#hasGlobal()} is <tt>false</tt>.
-     * Otherwise a SecurityException is thrown.
-     * @param controller a SecurityController object
-     * @throws SecurityException if there is already a SecurityController
-     *         object for this Context or globally installed.
-     * @see SecurityController#initGlobal(SecurityController controller)
-     * @see SecurityController#hasGlobal()
-     */
-    public final void setSecurityController(SecurityController controller)
-    {
-        if (sealed) onSealedMutation();
-        if (controller == null) throw new IllegalArgumentException();
-        if (securityController != null) {
-            throw new SecurityException("Can not overwrite existing SecurityController object");
-        }
-        if (SecurityController.hasGlobal()) {
-            throw new SecurityException("Can not overwrite existing global SecurityController object");
-        }
-        securityController = controller;
     }
 
     /**
@@ -2212,16 +2062,6 @@ public class Context
     }
 
     /**
-     * @deprecated
-     * @see ClassCache#get(Scriptable)
-     * @see ClassCache#setCachingEnabled(boolean)
-     */
-    @Deprecated
-    public static void setCachingEnabled(boolean cachingEnabled)
-    {
-    }
-
-    /**
      * Set a WrapFactory for this Context.
      * <p>
      * The WrapFactory allows custom object wrapping behavior for
@@ -2311,7 +2151,6 @@ public class Context
      * @see #FEATURE_RESERVED_KEYWORD_AS_IDENTIFIER
      * @see #FEATURE_TO_STRING_AS_SOURCE
      * @see #FEATURE_PARENT_PROTO_PROPRTIES
-     * @see #FEATURE_E4X
      * @see #FEATURE_DYNAMIC_SCOPE
      * @see #FEATURE_STRICT_VARS
      * @see #FEATURE_STRICT_EVAL
@@ -2324,21 +2163,6 @@ public class Context
     {
         ContextFactory f = getFactory();
         return f.hasFeature(this, featureIndex);
-    }
-
-    /**
-     * Returns an object which specifies an E4X implementation to use within
-     * this <code>Context</code>. Note that the XMLLib.Factory interface should
-     * be considered experimental.
-     *
-     * The default implementation uses the implementation provided by this
-     * <code>Context</code>'s {@link ContextFactory}.
-     *
-     * @return An XMLLib.Factory. Should not return <code>null</code> if
-     *         {@link #FEATURE_E4X} is enabled. See {@link #hasFeature}.
-     */
-    public XMLLib.Factory getE4xImplementationFactory() {
-        return getFactory().getE4xImplementationFactory();
     }
 
     /**
@@ -2417,64 +2241,6 @@ public class Context
         f.observeInstructionCount(this, instructionCount);
     }
 
-    /**
-     * Create class loader for generated classes.
-     * The method calls {@link ContextFactory#createClassLoader(ClassLoader)}
-     * using the result of {@link #getFactory()}.
-     */
-    public GeneratedClassLoader createClassLoader(ClassLoader parent)
-    {
-        ContextFactory f = getFactory();
-        return f.createClassLoader(parent);
-    }
-
-    public final ClassLoader getApplicationClassLoader()
-    {
-        if (applicationClassLoader == null) {
-            ContextFactory f = getFactory();
-            ClassLoader loader = f.getApplicationClassLoader();
-            if (loader == null) {
-                ClassLoader threadLoader
-                    = Thread.currentThread().getContextClassLoader();
-                if (threadLoader != null
-                    && Kit.testIfCanLoadRhinoClasses(threadLoader))
-                {
-                    // Thread.getContextClassLoader is not cached since
-                    // its caching prevents it from GC which may lead to
-                    // a memory leak and hides updates to
-                    // Thread.getContextClassLoader
-                    return threadLoader;
-                }
-                // Thread.getContextClassLoader can not load Rhino classes,
-                // try to use the loader of ContextFactory or Context
-                // subclasses.
-                Class<?> fClass = f.getClass();
-                if (fClass != ScriptRuntime.ContextFactoryClass) {
-                    loader = fClass.getClassLoader();
-                } else {
-                    loader = getClass().getClassLoader();
-                }
-            }
-            applicationClassLoader = loader;
-        }
-        return applicationClassLoader;
-    }
-
-    public final void setApplicationClassLoader(ClassLoader loader)
-    {
-        if (sealed) onSealedMutation();
-        if (loader == null) {
-            // restore default behaviour
-            applicationClassLoader = null;
-            return;
-        }
-        if (!Kit.testIfCanLoadRhinoClasses(loader)) {
-            throw new IllegalArgumentException(
-                "Loader can not resolve Rhino classes");
-        }
-        applicationClassLoader = loader;
-    }
-
     /********** end of API **********/
 
     /**
@@ -2501,10 +2267,6 @@ public class Context
     {
         if(sourceName == null) {
             sourceName = "unnamed script";
-        }
-        if (securityDomain != null && getSecurityController() == null) {
-            throw new IllegalArgumentException(
-                "securityDomain should be null if setSecurityController() was never called");
         }
 
         // One of sourceReader or sourceString has to be null
@@ -2610,17 +2372,10 @@ public class Context
         }
     }
 
-    private static Class<?> codegenClass = Kit.classOrNull(
-                             "org.mozilla.javascript.optimizer.Codegen");
-    private static Class<?> interpreterClass = Kit.classOrNull(
-                             "org.mozilla.javascript.Interpreter");
 
     private Evaluator createCompiler()
     {
         Evaluator result = null;
-        if (optimizationLevel >= 0 && codegenClass != null) {
-            result = (Evaluator)Kit.newInstanceOrNull(codegenClass);
-        }
         if (result == null) {
             result = createInterpreter();
         }
@@ -2629,7 +2384,7 @@ public class Context
 
     static Evaluator createInterpreter()
     {
-        return (Evaluator)Kit.newInstanceOrNull(interpreterClass);
+        return new Interpreter();
     }
 
     static String getSourcePositionFromStack(int[] linep)
@@ -2664,11 +2419,7 @@ public class Context
     RegExpProxy getRegExpProxy()
     {
         if (regExpProxy == null) {
-            Class<?> cl = Kit.classOrNull(
-                          "org.mozilla.javascript.regexp.RegExpImpl");
-            if (cl != null) {
-                regExpProxy = (RegExpProxy)Kit.newInstanceOrNull(cl);
-            }
+            regExpProxy = new RegExpImpl();
         }
         return regExpProxy;
     }
@@ -2676,16 +2427,6 @@ public class Context
     final boolean isVersionECMA1()
     {
         return version == VERSION_DEFAULT || version >= VERSION_1_3;
-    }
-
-// The method must NOT be public or protected
-    SecurityController getSecurityController()
-    {
-        SecurityController global = SecurityController.global();
-        if (global != null) {
-            return global;
-        }
-        return securityController;
     }
 
     public final boolean isGeneratingDebugChanged()
@@ -2746,7 +2487,6 @@ public class Context
     Scriptable topCallScope;
     boolean isContinuationsTopCall;
     NativeCall currentActivationCall;
-    XMLLib cachedXMLLib;
     BaseFunction typeErrorThrower;
 
     // for Objects, Arrays to tag themselves as being printed out,
@@ -2758,7 +2498,6 @@ public class Context
 
     int version;
 
-    private SecurityController securityController;
     private boolean hasClassShutter;
     private ClassShutter classShutter;
     private ErrorReporter errorReporter;

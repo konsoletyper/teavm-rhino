@@ -7,9 +7,6 @@
 package org.mozilla.javascript;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 
 /**
  * This class implements the Undefined value in JavaScript.
@@ -43,16 +40,106 @@ public class Undefined implements Serializable
     public static final Scriptable SCRIPTABLE_UNDEFINED;
 
     static {
-        SCRIPTABLE_UNDEFINED = (Scriptable) Proxy.newProxyInstance(Undefined.class.getClassLoader(), new Class[]{Scriptable.class}, new InvocationHandler() {
+        SCRIPTABLE_UNDEFINED = new Scriptable() {
             @Override
-            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                if (method.getName().equals("toString")) return "undefined";
-                if (method.getName().equals("equals")) {
-                    return args.length > 0 && isUndefined(args[0]);
-                }
-                throw new UnsupportedOperationException("undefined doesn't support " + method.getName());
+            public String toString() {
+                return "undefined";
             }
-        });
+
+            @Override
+            public String getClassName() {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public Object get(String name, Scriptable start) {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public Object get(int index, Scriptable start) {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public boolean has(String name, Scriptable start) {
+                unsupported();
+                return false;
+            }
+
+            @Override
+            public boolean has(int index, Scriptable start) {
+                unsupported();
+                return false;
+            }
+
+            @Override
+            public void put(String name, Scriptable start, Object value) {
+                unsupported();
+            }
+
+            @Override
+            public void put(int index, Scriptable start, Object value) {
+                unsupported();
+            }
+
+            @Override
+            public void delete(String name) {
+                unsupported();
+            }
+
+            @Override
+            public void delete(int index) {
+                unsupported();
+            }
+
+            @Override
+            public Scriptable getPrototype() {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public void setPrototype(Scriptable prototype) {
+                unsupported();
+            }
+
+            @Override
+            public Scriptable getParentScope() {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public void setParentScope(Scriptable parent) {
+                unsupported();
+            }
+
+            @Override
+            public Object[] getIds() {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public Object getDefaultValue(Class<?> hint) {
+                unsupported();
+                return null;
+            }
+
+            @Override
+            public boolean hasInstance(Scriptable instance) {
+                unsupported();
+                return false;
+            }
+
+            private void unsupported() {
+                throw new UnsupportedOperationException("undefined doesn't support this method");
+            }
+        };
     }
 
     public static boolean isUndefined(Object obj)

@@ -60,15 +60,6 @@ import org.mozilla.javascript.ast.VariableDeclaration;
 import org.mozilla.javascript.ast.VariableInitializer;
 import org.mozilla.javascript.ast.WhileLoop;
 import org.mozilla.javascript.ast.WithStatement;
-import org.mozilla.javascript.ast.XmlDotQuery;
-import org.mozilla.javascript.ast.XmlElemRef;
-import org.mozilla.javascript.ast.XmlExpression;
-import org.mozilla.javascript.ast.XmlFragment;
-import org.mozilla.javascript.ast.XmlLiteral;
-import org.mozilla.javascript.ast.XmlMemberGet;
-import org.mozilla.javascript.ast.XmlPropRef;
-import org.mozilla.javascript.ast.XmlRef;
-import org.mozilla.javascript.ast.XmlString;
 import org.mozilla.javascript.ast.Yield;
 
 /**
@@ -213,9 +204,6 @@ public final class IRFactory extends Parser
               if (node instanceof UnaryExpression) {
                   return transformUnary((UnaryExpression)node);
               }
-              if (node instanceof XmlMemberGet) {
-                  return transformXmlMemberGet((XmlMemberGet)node);
-              }
               if (node instanceof InfixExpression) {
                   return transformInfix((InfixExpression)node);
               }
@@ -230,12 +218,6 @@ public final class IRFactory extends Parser
               }
               if (node instanceof LetNode) {
                   return transformLetNode((LetNode)node);
-              }
-              if (node instanceof XmlRef) {
-                  return transformXmlRef((XmlRef)node);
-              }
-              if (node instanceof XmlLiteral) {
-                  return transformXmlLiteral((XmlLiteral)node);
               }
               throw new IllegalArgumentException("Can't transform: " + node);
         }
@@ -341,8 +323,7 @@ public final class IRFactory extends Parser
         // generate code for tmpArray.push(body)
         Node call = createCallOrNew(Token.CALL,
                                     createPropertyGet(createName(arrayName),
-                                                      null,
-                                                      "push", 0));
+                                        "push"));
 
         Node body = new Node(Token.EXPR_VOID, call, lineno);
 
@@ -811,9 +792,6 @@ public final class IRFactory extends Parser
         Node left = transform(node.getLeft());
         decompiler.addToken(node.getType());
         Node right = transform(node.getRight());
-        if (node instanceof XmlDotQuery) {
-            decompiler.addToken(Token.RP);
-        }
         return createBinary(node.getType(), left, right);
     }
 
@@ -1005,7 +983,7 @@ public final class IRFactory extends Parser
         String name = node.getProperty().getIdentifier();
         decompiler.addToken(Token.DOT);
         decompiler.addName(name);
-        return createPropertyGet(target, null, name, 0);
+        return createPropertyGet(target, name);
     }
 
     private Node transformRegExp(RegExpLiteral node) {
@@ -1180,9 +1158,6 @@ public final class IRFactory extends Parser
 
     private Node transformUnary(UnaryExpression node) {
         int type = node.getType();
-        if (type == Token.DEFAULTNAMESPACE) {
-            return transformDefaultXmlNamepace(node);
-        }
         if (node.isPrefix()) {
             decompiler.addToken(type);
         }
@@ -1286,107 +1261,6 @@ public final class IRFactory extends Parser
         if (kid != null)
             return new Node(Token.YIELD, kid, node.getLineno());
         return new Node(Token.YIELD, node.getLineno());
-    }
-
-    private Node transformXmlLiteral(XmlLiteral node) {
-        // a literal like <foo>{bar}</foo> is rewritten as
-        //   new XML("<foo>" + bar + "</foo>");
-
-        Node pnXML = new Node(Token.NEW, node.getLineno());
-        List<XmlFragment> frags = node.getFragments();
-
-        XmlString first = (XmlString)frags.get(0);
-        boolean anon = first.getXml().trim().startsWith("<>");
-        pnXML.addChildToBack(createName(anon ? "XMLList" : "XML"));
-
-        Node pn = null;
-        for (XmlFragment frag : frags) {
-            if (frag instanceof XmlString) {
-                String xml = ((XmlString)frag).getXml();
-                decompiler.addName(xml);
-                if (pn == null) {
-                    pn = createString(xml);
-                } else {
-                    pn = createBinary(Token.ADD, pn, createString(xml));
-                }
-            } else {
-                XmlExpression xexpr = (XmlExpression)frag;
-                boolean isXmlAttr = xexpr.isXmlAttribute();
-                Node expr;
-                decompiler.addToken(Token.LC);
-                if (xexpr.getExpression() instanceof EmptyExpression) {
-                    expr = createString("");
-                } else {
-                    expr = transform(xexpr.getExpression());
-                }
-                decompiler.addToken(Token.RC);
-                if (isXmlAttr) {
-                    // Need to put the result in double quotes
-                    expr = createUnary(Token.ESCXMLATTR, expr);
-                    Node prepend = createBinary(Token.ADD,
-                                                createString("\""),
-                                                expr);
-                    expr = createBinary(Token.ADD,
-                                        prepend,
-                                        createString("\""));
-                } else {
-                    expr = createUnary(Token.ESCXMLTEXT, expr);
-                }
-                pn = createBinary(Token.ADD, pn, expr);
-            }
-        }
-
-        pnXML.addChildToBack(pn);
-        return pnXML;
-    }
-
-    private Node transformXmlMemberGet(XmlMemberGet node) {
-        XmlRef ref = node.getMemberRef();
-        Node pn = transform(node.getLeft());
-        int flags = ref.isAttributeAccess() ? Node.ATTRIBUTE_FLAG : 0;
-        if (node.getType() == Token.DOTDOT) {
-            flags |= Node.DESCENDANTS_FLAG;
-            decompiler.addToken(Token.DOTDOT);
-        } else {
-            decompiler.addToken(Token.DOT);
-        }
-        return transformXmlRef(pn, ref, flags);
-    }
-
-    // We get here if we weren't a child of a . or .. infix node
-    private Node transformXmlRef(XmlRef node) {
-        int memberTypeFlags = node.isAttributeAccess()
-            ? Node.ATTRIBUTE_FLAG : 0;
-        return transformXmlRef(null, node, memberTypeFlags);
-    }
-
-    private Node transformXmlRef(Node pn, XmlRef node, int memberTypeFlags) {
-        if ((memberTypeFlags & Node.ATTRIBUTE_FLAG) != 0)
-            decompiler.addToken(Token.XMLATTR);
-        Name namespace = node.getNamespace();
-        String ns = namespace != null ? namespace.getIdentifier() : null;
-        if (ns != null) {
-            decompiler.addName(ns);
-            decompiler.addToken(Token.COLONCOLON);
-        }
-        if (node instanceof XmlPropRef) {
-            String name = ((XmlPropRef)node).getPropName().getIdentifier();
-            decompiler.addName(name);
-            return createPropertyGet(pn, ns, name, memberTypeFlags);
-        }
-        decompiler.addToken(Token.LB);
-        Node expr = transform(((XmlElemRef)node).getExpression());
-        decompiler.addToken(Token.RB);
-        return createElementGet(pn, ns, expr, memberTypeFlags);
-    }
-
-    private Node transformDefaultXmlNamepace(UnaryExpression node) {
-        decompiler.addToken(Token.DEFAULT);
-        decompiler.addName(" xml");
-        decompiler.addName(" namespace");
-        decompiler.addToken(Token.ASSIGN);
-        Node child = transform(node.getOperand());
-        return createUnary(Token.DEFAULTNAMESPACE, child);
     }
 
     /**
@@ -2017,76 +1891,19 @@ public final class IRFactory extends Parser
         throw Kit.codeBug();
     }
 
-    private Node createPropertyGet(Node target, String namespace, String name,
-                                   int memberTypeFlags)
+    private Node createPropertyGet(Node target, String name)
     {
-        if (namespace == null && memberTypeFlags == 0) {
-            if (target == null) {
-                return createName(name);
-            }
-            checkActivationName(name, Token.GETPROP);
-            if (ScriptRuntime.isSpecialProperty(name)) {
-                Node ref = new Node(Token.REF_SPECIAL, target);
-                ref.putProp(Node.NAME_PROP, name);
-                return new Node(Token.GET_REF, ref);
-            }
-            return new Node(Token.GETPROP, target, Node.newString(name));
-        }
-        Node elem = Node.newString(name);
-        memberTypeFlags |= Node.PROPERTY_FLAG;
-        return createMemberRefGet(target, namespace, elem, memberTypeFlags);
-    }
-
-    /**
-     * @param target the node before the LB
-     * @param namespace optional namespace
-     * @param elem the node in the brackets
-     * @param memberTypeFlags E4X flags
-     */
-    private Node createElementGet(Node target, String namespace, Node elem,
-                                  int memberTypeFlags)
-    {
-        // OPT: could optimize to createPropertyGet
-        // iff elem is string that can not be number
-        if (namespace == null && memberTypeFlags == 0) {
-            // stand-alone [aaa] as primary expression is array literal
-            // declaration and should not come here!
-            if (target == null) throw Kit.codeBug();
-            return new Node(Token.GETELEM, target, elem);
-        }
-        return createMemberRefGet(target, namespace, elem, memberTypeFlags);
-    }
-
-    private Node createMemberRefGet(Node target, String namespace, Node elem,
-                                    int memberTypeFlags)
-    {
-        Node nsNode = null;
-        if (namespace != null) {
-            // See 11.1.2 in ECMA 357
-            if (namespace.equals("*")) {
-                nsNode = new Node(Token.NULL);
-            } else {
-                nsNode = createName(namespace);
-            }
-        }
-        Node ref;
         if (target == null) {
-            if (namespace == null) {
-                ref = new Node(Token.REF_NAME, elem);
-            } else {
-                ref = new Node(Token.REF_NS_NAME, nsNode, elem);
-            }
-        } else {
-            if (namespace == null) {
-                ref = new Node(Token.REF_MEMBER, target, elem);
-            } else {
-                ref = new Node(Token.REF_NS_MEMBER, target, nsNode, elem);
-            }
+            return createName(name);
         }
-        if (memberTypeFlags != 0) {
-            ref.putIntProp(Node.MEMBER_TYPE_PROP, memberTypeFlags);
+        checkActivationName(name, Token.GETPROP);
+        if (ScriptRuntime.isSpecialProperty(name)) {
+            Node ref = new Node(Token.REF_SPECIAL, target);
+            ref.putProp(Node.NAME_PROP, name);
+            return new Node(Token.GET_REF, ref);
         }
-        return new Node(Token.GET_REF, ref);
+        return new Node(Token.GETPROP, target, Node.newString(name));
+
     }
 
     private Node createBinary(int nodeType, Node left, Node right) {

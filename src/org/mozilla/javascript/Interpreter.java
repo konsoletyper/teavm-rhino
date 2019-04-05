@@ -6,7 +6,10 @@
 
 package org.mozilla.javascript;
 
-import static org.mozilla.javascript.UniqueTag.DOUBLE_MARK;
+import org.mozilla.javascript.ScriptRuntime.NoSuchMethodShim;
+import org.mozilla.javascript.ast.FunctionNode;
+import org.mozilla.javascript.ast.ScriptNode;
+import org.mozilla.javascript.debug.DebugFrame;
 
 import java.io.PrintStream;
 import java.io.Serializable;
@@ -15,10 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.mozilla.javascript.ScriptRuntime.NoSuchMethodShim;
-import org.mozilla.javascript.ast.FunctionNode;
-import org.mozilla.javascript.ast.ScriptNode;
-import org.mozilla.javascript.debug.DebugFrame;
+import static org.mozilla.javascript.UniqueTag.DOUBLE_MARK;
 
 public final class Interpreter extends Icode implements Evaluator
 {
@@ -392,8 +392,8 @@ public final class Interpreter extends Icode implements Evaluator
         {
             Kit.codeBug();
         }
-        return InterpretedFunction.createScript(itsData,
-                                                staticSecurityDomain);
+        return InterpretedFunction.createScript(itsData
+        );
     }
 
     @Override
@@ -409,8 +409,8 @@ public final class Interpreter extends Icode implements Evaluator
         {
             Kit.codeBug();
         }
-        return InterpretedFunction.createFunction(cx, scope, itsData,
-                                                  staticSecurityDomain);
+        return InterpretedFunction.createFunction(cx, scope, itsData
+        );
     }
 
     private static int getShort(byte[] iCode, int pc) {
@@ -502,8 +502,7 @@ public final class Interpreter extends Icode implements Evaluator
               case Token.GOTO :
               case Token.IFEQ :
               case Token.IFNE :
-              case Icode_IFEQ_POP :
-              case Icode_LEAVEDQ : {
+              case Icode_IFEQ_POP : {
                 int newPC = pc + getShort(iCode, pc) - 1;
                 out.println(tname + " " + newPC);
                 pc += 2;
@@ -695,7 +694,6 @@ public final class Interpreter extends Icode implements Evaluator
             case Token.IFEQ :
             case Token.IFNE :
             case Icode_IFEQ_POP :
-            case Icode_LEAVEDQ :
                 // target pc offset
                 return 1 + 2;
 
@@ -858,7 +856,7 @@ public final class Interpreter extends Icode implements Evaluator
     {
         String tag = "org.mozilla.javascript.Interpreter.interpretLoop";
         StringBuilder sb = new StringBuilder(nativeStackTrace.length() + 1000);
-        String lineSeparator = SecurityUtilities.getSystemProperty("line.separator");
+        String lineSeparator = System.lineSeparator();
 
         CallFrame[] array = (CallFrame[])ex.interpreterStackInfo;
         int[] linePC = ex.interpreterLineData;
@@ -915,9 +913,8 @@ public final class Interpreter extends Icode implements Evaluator
     @Override
     public List<String> getScriptStack(RhinoException ex) {
         ScriptStackElement[][] stack = getScriptStackElements(ex);
-        List<String> list = new ArrayList<String>(stack.length);
-        String lineSeparator =
-                SecurityUtilities.getSystemProperty("line.separator");
+        List<String> list = new ArrayList<>(stack.length);
+        String lineSeparator = System.lineSeparator();
         for (ScriptStackElement[] group : stack) {
             StringBuilder sb = new StringBuilder();
             for (ScriptStackElement elem : group) {
@@ -995,8 +992,7 @@ public final class Interpreter extends Icode implements Evaluator
             Object savedDomain = cx.interpreterSecurityDomain;
             cx.interpreterSecurityDomain = ifun.securityDomain;
             try {
-                return ifun.securityController.callWithDomain(
-                    ifun.securityDomain, cx, ifun, scope, thisObj, args);
+              return ifun.call(cx, scope, thisObj, args);
             } finally {
                 cx.interpreterSecurityDomain = savedDomain;
             }
@@ -1871,29 +1867,6 @@ switch (op) {
                                                    cx, frame.scope);
         continue Loop;
     }
-    case Token.REF_MEMBER: {
-        //indexReg: flags
-        stackTop = doRefMember(cx, stack, sDbl, stackTop, indexReg);
-        continue Loop;
-    }
-    case Token.REF_NS_MEMBER: {
-        //indexReg: flags
-        stackTop = doRefNsMember(cx, stack, sDbl, stackTop, indexReg);
-        continue Loop;
-    }
-    case Token.REF_NAME: {
-        //indexReg: flags
-        Object name = stack[stackTop];
-        if (name == DBL_MRK) name = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.nameRef(name, cx, frame.scope,
-                                                indexReg);
-        continue Loop;
-    }
-    case Token.REF_NS_NAME: {
-        //indexReg: flags
-        stackTop = doRefNsName(cx, frame, stack, sDbl, stackTop, indexReg);
-        continue Loop;
-    }
     case Icode_SCOPE_LOAD :
         indexReg += frame.localShift;
         frame.scope = (Scriptable)stack[indexReg];
@@ -1974,46 +1947,6 @@ switch (op) {
                                                 frame.scope);
         }
         stack[stackTop] = val;
-        continue Loop;
-    }
-    case Icode_ENTERDQ : {
-        Object lhs = stack[stackTop];
-        if (lhs == DBL_MRK) lhs = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        frame.scope = ScriptRuntime.enterDotQuery(lhs, frame.scope);
-        continue Loop;
-    }
-    case Icode_LEAVEDQ : {
-        boolean valBln = stack_boolean(frame, stackTop);
-        Object x = ScriptRuntime.updateDotQuery(valBln, frame.scope);
-        if (x != null) {
-            stack[stackTop] = x;
-            frame.scope = ScriptRuntime.leaveDotQuery(frame.scope);
-            frame.pc += 2;
-            continue Loop;
-        }
-        // reset stack and PC to code after ENTERDQ
-        --stackTop;
-        break jumplessRun;
-    }
-    case Token.DEFAULTNAMESPACE : {
-        Object value = stack[stackTop];
-        if (value == DBL_MRK) value = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.setDefaultNamespace(value, cx);
-        continue Loop;
-    }
-    case Token.ESCXMLATTR : {
-        Object value = stack[stackTop];
-        if (value != DBL_MRK) {
-            stack[stackTop] = ScriptRuntime.escapeAttributeValue(value, cx);
-        }
-        continue Loop;
-    }
-    case Token.ESCXMLTEXT : {
-        Object value = stack[stackTop];
-        if (value != DBL_MRK) {
-            stack[stackTop] = ScriptRuntime.escapeTextValue(value, cx);
-        }
         continue Loop;
     }
     case Icode_DEBUGGER:
@@ -2593,43 +2526,6 @@ switch (op) {
                                                          cx, incrDecrMask);
         }
         ++frame.pc;
-        return stackTop;
-    }
-
-    private static int doRefMember(Context cx, Object[] stack, double[] sDbl,
-                                   int stackTop, int flags) {
-        Object elem = stack[stackTop];
-        if (elem == DOUBLE_MARK) elem = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object obj = stack[stackTop];
-        if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.memberRef(obj, elem, cx, flags);
-        return stackTop;
-    }
-
-    private static int doRefNsMember(Context cx, Object[] stack, double[] sDbl,
-                                     int stackTop, int flags) {
-        Object elem = stack[stackTop];
-        if (elem == DOUBLE_MARK) elem = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object ns = stack[stackTop];
-        if (ns == DOUBLE_MARK) ns = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object obj = stack[stackTop];
-        if (obj == DOUBLE_MARK) obj = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.memberRef(obj, ns, elem, cx, flags);
-        return stackTop;
-    }
-
-    private static int doRefNsName(Context cx, CallFrame frame,
-                                   Object[] stack, double[] sDbl,
-                                   int stackTop, int flags) {
-        Object name = stack[stackTop];
-        if (name == DOUBLE_MARK) name = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        --stackTop;
-        Object ns = stack[stackTop];
-        if (ns == DOUBLE_MARK) ns = ScriptRuntime.wrapNumber(sDbl[stackTop]);
-        stack[stackTop] = ScriptRuntime.nameRef(ns, name, cx, frame.scope, flags);
         return stackTop;
     }
 
