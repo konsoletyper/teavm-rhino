@@ -16,14 +16,14 @@ public class Issue176Test extends TestCase {
     Context cx;
     Scriptable scope;
 
-    public void ignoreThrowing() throws Exception {
+    public void testThrowing() throws Exception {
         cx = Context.enter();
         try {
             Script script = cx.compileReader(new InputStreamReader(
                     Bug482203Test.class.getResourceAsStream("Issue176.js")),
                     "Issue176.js", 1, null);
             scope = cx.initStandardObjects();
-            scope.put("host", scope, this);
+            scope.put("host", scope, new Host());
             script.exec(cx, scope); // calls our methods
         } finally {
             Context.exit();

@@ -19,11 +19,7 @@ public class JsTestsTest extends JsTestsBase {
 
     public void runJsTests() throws IOException {
         File[] tests = TestUtils.recursiveListFiles(new File(baseDirectory),
-                new FileFilter() {
-                  public boolean accept(File f) {
-                      return f.getName().endsWith(jstestsExtension);
-                  }
-                });
+            f -> f.getName().endsWith(jstestsExtension));
         runJsTests(tests);
     }
 

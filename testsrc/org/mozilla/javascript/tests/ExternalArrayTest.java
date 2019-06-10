@@ -52,7 +52,7 @@ public class ExternalArrayTest
     {
         ScriptableObject a = (ScriptableObject)cx.newObject(root);
         TestIntArray l = new TestIntArray(10);
-        a.setExternalArrayData(l);
+        a.setExternalArrayData(cx, l);
         for (int i = 0; i < 10; i++) {
             l.setArrayElement(i, i);
         }
@@ -68,7 +68,7 @@ public class ExternalArrayTest
         ScriptableObject a = (ScriptableObject)cx.newObject(root);
         // Set the external array data
         TestIntArray l = new TestIntArray(10);
-        a.setExternalArrayData(l);
+        a.setExternalArrayData(cx, l);
         for (int i = 0; i < 10; i++) {
             l.setArrayElement(i, i);
         }
@@ -81,7 +81,7 @@ public class ExternalArrayTest
         // regular JavaScript object.
         a.delete("stringField");
         a.delete("intField");
-        a.setExternalArrayData(null);
+        a.setExternalArrayData(cx, null);
         for (int i = 0; i < 10; i++) {
             a.put(i, a, i);
         }
@@ -95,7 +95,7 @@ public class ExternalArrayTest
     {
         ScriptableObject a = (ScriptableObject)cx.newObject(root);
         NativeInt32Array l = new NativeInt32Array(10);
-        a.setExternalArrayData(l);
+        a.setExternalArrayData(cx, l);
 
         root.put("testArray", root, a);
         root.put("testArrayLength", root, 10);
@@ -108,7 +108,7 @@ public class ExternalArrayTest
     {
         ScriptableObject a = (ScriptableObject)cx.newObject(root);
         NativeInt16Array l = new NativeInt16Array(10);
-        a.setExternalArrayData(l);
+        a.setExternalArrayData(cx, l);
 
         root.put("testArray", root, a);
         root.put("testArrayLength", root, 10);
@@ -121,7 +121,7 @@ public class ExternalArrayTest
     {
         ScriptableObject a = (ScriptableObject)cx.newObject(root);
         NativeFloat64Array l = new NativeFloat64Array(10);
-        a.setExternalArrayData(l);
+        a.setExternalArrayData(cx, l);
 
         root.put("testArray", root, a);
         root.put("testArrayLength", root, 10);

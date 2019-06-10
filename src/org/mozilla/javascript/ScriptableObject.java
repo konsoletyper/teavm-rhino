@@ -823,12 +823,22 @@ public abstract class ScriptableObject implements Scriptable,
      *              property access.
      * @since 1.7.6
      */
-    public void setExternalArrayData(ExternalArrayData array)
+    public void setExternalArrayData(Context context, ExternalArrayData array)
     {
         externalData = array;
 
         if (array == null) {
             delete("length");
+        } else {
+            // Define "length" to return whatever length the List gives us.
+            defineProperty("length", Undefined.instance, 0);
+            defineProperty(
+                context,
+                "length",
+                new CallableFunction((cx, scope, thisObj, args) -> getExternalArrayLength()),
+                null,
+                READONLY | DONTENUM
+            );
         }
     }
 
@@ -846,9 +856,9 @@ public abstract class ScriptableObject implements Scriptable,
     /**
      * This is a function used by setExternalArrayData to dynamically get the "length" property value.
      */
-    public Object getExternalArrayLength()
+    private Double getExternalArrayLength()
     {
-        return (externalData == null ? 0 : externalData.getArrayLength());
+        return (externalData == null ? 0 : (double) externalData.getArrayLength());
     }
 
     /**

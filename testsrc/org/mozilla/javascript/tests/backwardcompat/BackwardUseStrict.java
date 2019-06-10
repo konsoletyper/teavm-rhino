@@ -4,6 +4,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.RhinoException;
+import org.mozilla.javascript.tests.TestScopeUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,7 +47,7 @@ public class BackwardUseStrict {
     cx.setLanguageVersion(Context.VERSION_1_8);
     cx.setOptimizationLevel(opt);
     try {
-      cx.evaluateString(cx.initStandardObjects(), source, "[test]", 1, null);
+      cx.evaluateString(TestScopeUtil.createScope(cx), source, "[test]", 1, null);
     } catch (RhinoException re) {
       System.err.println(re.getScriptStackTrace());
       assertTrue("Unexpected code error: " + re, false);
@@ -61,7 +62,7 @@ public class BackwardUseStrict {
     cx.setLanguageVersion(Context.VERSION_ES6);
     cx.setOptimizationLevel(opt);
     try {
-      cx.evaluateString(cx.initStandardObjects(), source, "[test]", 1, null);
+      cx.evaluateString(TestScopeUtil.createScope(cx), source, "[test]", 1, null);
       assertTrue("Expected a runtime exception", false);
     } catch (RhinoException re) {
       // We expect an error here.

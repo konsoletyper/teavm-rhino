@@ -27,6 +27,11 @@ public final class TestScopeUtil {
       return Undefined.instance;
     }), ScriptableObject.READONLY);
 
+    result.defineProperty("gc", new CallableFunction((cx, scope, thisObj, args) -> {
+      System.gc();
+      return Undefined.instance;
+    }), ScriptableObject.READONLY);
+
     return result;
   }
 

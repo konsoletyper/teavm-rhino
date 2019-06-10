@@ -452,7 +452,7 @@ final class NativeString extends IdScriptableObject
                 }
                 case Id_normalize:
                 {
-                    return ScriptRuntime.toString(args, 0);
+                    return ScriptRuntime.toString(thisObj);
                 }
 
                 case Id_repeat:
