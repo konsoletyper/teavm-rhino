@@ -211,8 +211,8 @@ public class ScriptRuntime {
             NativeCollectionIterator.init(scope, NativeMap.ITERATOR_TAG, sealed);
             NativeMap.init(cx, scope, sealed);
             NativeSet.init(cx, scope, sealed);
-            //NativeWeakMap.init(scope, sealed);
-            //NativeWeakSet.init(scope, sealed);
+            NativeWeakMap.init(scope, sealed);
+            NativeWeakSet.init(scope, sealed);
         }
 
         if (scope instanceof TopLevel) {
@@ -227,13 +227,6 @@ public class ScriptRuntime {
                                                        boolean sealed)
     {
         return initSafeStandardObjects(cx, scope, sealed);
-    }
-
-    static String[] getTopPackageNames() {
-        // Include "android" top package if running on Android
-        return "Dalvik".equals(System.getProperty("java.vm.name")) ?
-            new String[] { "java", "javax", "org", "com", "edu", "net", "android" } :
-            new String[] { "java", "javax", "org", "com", "edu", "net" };
     }
 
     public static ScriptableObject getLibraryScopeOrNull(Scriptable scope)
@@ -1900,7 +1893,7 @@ public class ScriptRuntime {
             parentScope = parentScope.getParentScope();
             if (parentScope == null) {
                 result = topScopeName(cx, scope, name);
-                if (result == Scriptable.NOT_FOUND && asFunctionCall) {
+                if (result == Scriptable.NOT_FOUND) {
                     throw notFoundError(scope, name);
                 }
                 // For top scope thisObj for functions is always scope itself.

@@ -6,9 +6,7 @@
 
 package org.mozilla.javascript;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.util.WeakHashMap;
+import org.mozilla.javascript.util.WeakIdentityMap;
 
 /**
  * This is an implementation of the ES6 WeakMap class. As per the spec, keys must be
@@ -25,7 +23,7 @@ public class NativeWeakMap
 
     private boolean instanceOfWeakMap = false;
 
-    private transient WeakHashMap<Scriptable, Object> map = new WeakHashMap<>();
+    private transient WeakIdentityMap<Object, Object> map = new WeakIdentityMap<>();
 
     private static final Object NULL_VALUE = new Object();
 
@@ -193,12 +191,4 @@ public class NativeWeakMap
         SymbolId_toStringTag = 6,
         MAX_PROTOTYPE_ID = SymbolId_toStringTag;
 
-// #/string_id_map#
-
-    private void readObject(ObjectInputStream stream)
-        throws IOException, ClassNotFoundException
-    {
-        stream.defaultReadObject();
-        map = new WeakHashMap<>();
-    }
 }

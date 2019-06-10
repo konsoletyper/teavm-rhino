@@ -27,55 +27,42 @@ public class WrapFactoryTest {
    * default setting (javaPrimitiveWrap = true)
    */
   @Test
-  @Ignore
   public void primitiveWrapTrue() {
-    test(true, "text", "string", "object", "object");
-    test(true, Boolean.FALSE, "boolean", "object", "object");
-    test(true, new Integer(1), "number", "object", "object");
-    test(true, new Long(2L), "number", "object", "object");
-    test(true, new BigInteger("3"), "number", "object", "object");
-    test(true, new BigDecimal("4.0"), "number", "object", "object");
+    test(true, "text", "string");
+    test(true, Boolean.FALSE, "boolean");
+    test(true, new Integer(1), "number");
+    test(true, new Long(2L), "number");
+    test(true, new BigInteger("3"), "number");
+    test(true, new BigDecimal("4.0"), "number");
   }
 
   /**
    * javaPrimitiveWrap = false
    */
   @Test
-  @Ignore
   public void primitiveWrapFalse() {
-    test(false, "text", "string", "string", "string"); // Great! I want to do this.
-    test(false, Boolean.FALSE, "boolean", "boolean", "boolean");
-    test(false, new Integer(1), "number", "number", "number");
-    test(false, new Long(2L), "number", "number", "number");
+    test(false, "text", "string"); // Great! I want to do this.
+    test(false, Boolean.FALSE, "boolean");
+    test(false, new Integer(1), "number");
+    test(false, new Long(2L), "number");
 
     // I want to treat BigInteger / BigDecimal as BigInteger / BigDecimal. But fails.
-    test(false, new BigInteger("30"), "number", "object", "object");
-    test(false, new BigDecimal("4.0"), "number", "object", "object");
+    test(false, new BigInteger("30"), "number");
+    test(false, new BigDecimal("4.0"), "number");
 
     // This is the best. I want not to convert to number.
     //test(false, new BigInteger("30"), "object", "object", "object");
     //test(false, new BigDecimal("4.0"), "object", "object", "object");
   }
 
-  /**
-   * @param javaPrimitiveWrap
-   * @param object
-   * @param result typeof value
-   * @param mapResult typeof map value
-   * @param getResult typeof getter value
-   */
-  private void test(boolean javaPrimitiveWrap, Object object, String result,
-      String mapResult, String getResult) {
+  private void test(boolean javaPrimitiveWrap, Object object, String result) {
     Context cx = Context.enter();
     try {
       cx.getWrapFactory().setJavaPrimitiveWrap(javaPrimitiveWrap);
       Scriptable scope = cx.initStandardObjects(cx.initStandardObjects());
 
-      //register object
-      Map<String, Object> map = new LinkedHashMap<>();
-      map.put("test", object);
-
       //execute script
+      ScriptableObject.putProperty(scope, "test", object);
       cx.evaluateString(scope, script, "", 1, null);
 
       //evaluate result

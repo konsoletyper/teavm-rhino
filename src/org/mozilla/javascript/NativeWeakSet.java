@@ -6,9 +6,7 @@
 
 package org.mozilla.javascript;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.util.WeakHashMap;
+import org.mozilla.javascript.util.WeakIdentityMap;
 
 /**
  * This is an implementation of the ES6 WeakSet class. It is very similar to
@@ -24,7 +22,7 @@ public class NativeWeakSet
 
     private boolean instanceOfWeakSet = false;
 
-    private transient WeakHashMap<Scriptable, Boolean> map = new WeakHashMap<>();
+    private transient WeakIdentityMap<Object, Boolean> map = new WeakIdentityMap<>();
 
     static void init(Scriptable scope, boolean sealed) {
         NativeWeakSet m = new NativeWeakSet();
@@ -168,13 +166,4 @@ public class NativeWeakSet
         Id_has = 4,
         SymbolId_toStringTag = 5,
         MAX_PROTOTYPE_ID = SymbolId_toStringTag;
-
-// #/string_id_map#
-
-    private void readObject(ObjectInputStream stream)
-        throws IOException, ClassNotFoundException
-    {
-        stream.defaultReadObject();
-        map = new WeakHashMap<>();
-    }
 }

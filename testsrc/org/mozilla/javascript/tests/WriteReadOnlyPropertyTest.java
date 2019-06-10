@@ -8,10 +8,7 @@ import java.lang.reflect.Method;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.EcmaError;
-import org.mozilla.javascript.ScriptableObject;
+import org.mozilla.javascript.*;
 
 /**
  * Test that read-only properties can be... set when needed.
@@ -40,14 +37,15 @@ public class WriteReadOnlyPropertyTest {
             Assert.fail();
         }
         catch (EcmaError e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("Cannot set property [Foo].myProp that has only a getter to value '123'"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("Cannot set property \"[Foo].myProp\" that has only a getter to value \"123\""));
         }
     }
 
     void testWriteReadOnly(final boolean acceptWriteReadOnly) throws Exception {
-        final Method readMethod = Foo.class.getMethod("getMyProp", (Class[])null);
         final Foo foo = new Foo("hello");
-        //foo.defineProperty("myProp", null, readMethod, null, ScriptableObject.EMPTY);
+        foo.defineProperty(Context.getCurrentContext(), "myProp",
+            new CallableFunction((cx, scope, thisObj, args) -> ((Foo) thisObj).getMyProp()),
+            null, ScriptableObject.EMPTY);
 
         final String script = "foo.myProp = 123; foo.myProp";
 
