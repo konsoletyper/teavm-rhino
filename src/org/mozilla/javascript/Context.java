@@ -1466,7 +1466,7 @@ public class Context
         return compileString(source, null, null, sourceName, lineno);
     }
 
-    final Script compileString(String source,
+    public final Script compileString(String source,
                                Evaluator compiler,
                                ErrorReporter compilationErrorReporter,
                                String sourceName, int lineno)
@@ -2382,7 +2382,7 @@ public class Context
         return result;
     }
 
-    static Evaluator createInterpreter()
+    public static Evaluator createInterpreter()
     {
         return new Interpreter();
     }

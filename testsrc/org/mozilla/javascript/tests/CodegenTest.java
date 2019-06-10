@@ -23,14 +23,6 @@ public class CodegenTest extends TestCase {
             scriptSource.append("a = a + 1;");
         }
 
-        Utils.runWithAllOptimizationLevels(_cx -> {
-            Script script = _cx.compileString(scriptSource.toString(), "test-source", 1, null);
-            if (_cx.getOptimizationLevel() > -1) {
-                Assert.assertTrue(script.getClass().getName(), script.getClass().getName().startsWith("org.mozilla.javascript.gen.test_source_"));
-            }
-            return null;
-        });
-
         // now with code that is too large
         for (int i = 0; i < 1000; i++) {
             scriptSource.append("a = a + 1;");
@@ -50,14 +42,6 @@ public class CodegenTest extends TestCase {
         for (; i < 1000; i++) {
             scriptSource.append("var a" + i + ";");
         }
-
-        Utils.runWithAllOptimizationLevels(_cx -> {
-            Script script = _cx.compileString(scriptSource.toString(), "test-source", 1, null);
-            if (_cx.getOptimizationLevel() > -1) {
-                Assert.assertTrue(script.getClass().getName(), script.getClass().getName().startsWith("org.mozilla.javascript.gen.test_source_"));
-            }
-            return null;
-        });
 
         // now with code that is too large
         for (; i < 10000; i++) {
@@ -79,14 +63,6 @@ public class CodegenTest extends TestCase {
             scriptSource.append("a" + i + "= " + i + ";");
         }
         scriptSource.append("return 'done'; }");
-
-        Utils.runWithAllOptimizationLevels(_cx -> {
-            Script script = _cx.compileString(scriptSource.toString(), "test-source", 1, null);
-            if (_cx.getOptimizationLevel() > -1) {
-                Assert.assertTrue(script.getClass().getName(), script.getClass().getName().startsWith("org.mozilla.javascript.gen.test_source_"));
-            }
-            return null;
-        });
 
         // now with code that is too large
         scriptSource.setLength(0);
@@ -113,9 +89,6 @@ public class CodegenTest extends TestCase {
 
         Utils.runWithAllOptimizationLevels(_cx -> {
             Script script = _cx.compileString(scriptSource.toString(), "test-source", 1, null);
-            if (_cx.getOptimizationLevel() > -1) {
-                Assert.assertTrue(script.getClass().getName(), script.getClass().getName().startsWith("org.mozilla.javascript.gen.test_source_"));
-            }
             return null;
         });
 

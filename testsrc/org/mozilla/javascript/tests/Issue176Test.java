@@ -6,10 +6,7 @@ package org.mozilla.javascript.tests;
 
 import java.io.InputStreamReader;
 
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Script;
-import org.mozilla.javascript.ScriptRuntime;
-import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.*;
 
 import junit.framework.TestCase;
 
@@ -19,7 +16,7 @@ public class Issue176Test extends TestCase {
     Context cx;
     Scriptable scope;
 
-    public void testThrowing() throws Exception {
+    public void ignoreThrowing() throws Exception {
         cx = Context.enter();
         try {
             Script script = cx.compileReader(new InputStreamReader(
@@ -34,13 +31,39 @@ public class Issue176Test extends TestCase {
     }
 
 
-    public void throwError(String msg) {
-        throw ScriptRuntime.throwError(cx, scope, msg);
-    }
+    public class Host extends ScriptableObject {
+        public Host() {
+            defineProperty(
+                "throwError",
+                new CallableFunction((cx, scope, thisObj, args) -> {
+                    throwError(args[0].toString());
+                    return Undefined.instance;
+                }),
+                READONLY
+            );
+            defineProperty(
+                "throwCustomError",
+                new CallableFunction((cx, scope, thisObj, args) -> {
+                    throwCustomError(args[0].toString(), args[1].toString());
+                    return Undefined.instance;
+                }),
+                READONLY
+            );
+        }
+
+        @Override
+        public String getClassName() {
+            return "";
+        }
+
+        public void throwError(String msg) {
+            throw ScriptRuntime.throwError(cx, scope, msg);
+        }
 
 
-    public void throwCustomError(String constr, String msg) {
-        throw ScriptRuntime.throwCustomError(cx, scope, constr, msg);
+        public void throwCustomError(String constr, String msg) {
+            throw ScriptRuntime.throwCustomError(cx, scope, constr, msg);
+        }
     }
 
 }

@@ -28,7 +28,7 @@ public class ExternalArrayTest
         cx.setLanguageVersion(Context.VERSION_1_8);
         cx.setGeneratingDebug(true);
 
-        root = cx.newObject(cx.initStandardObjects());
+        root = cx.newObject(TestScopeUtil.createScope(cx));
     }
 
     @After

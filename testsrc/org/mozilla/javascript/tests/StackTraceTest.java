@@ -27,12 +27,10 @@ public class StackTraceTest extends TestCase {
         RhinoException.useMozillaStackStyle(false);
         final String source1 = "function f2() { throw 'hello'; }; f2();";
         final String source2 = "function f2() { 'H'.toLowerCase(); throw 'hello'; }; f2();";
-        final String source3 = "function f2() { new java.lang.String('H').toLowerCase(); throw 'hello'; }; f2();";
         final String result = "\tat test.js (f2)" + LS + "\tat test.js" + LS;
 
         runWithExpectedStackTrace(source1, result);
         runWithExpectedStackTrace(source2, result);
-        runWithExpectedStackTrace(source3, result);
     }
 
     private void runWithExpectedStackTrace(final String _source, final String _expectedStackTrace)

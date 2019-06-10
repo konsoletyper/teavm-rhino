@@ -750,12 +750,12 @@ public class NativeGlobal implements Serializable, IdFunctionCall
         Id_eval                =  6,
         Id_isFinite            =  7,
         Id_isNaN               =  8,
-        Id_parseFloat          = 10,
-        Id_parseInt            = 11,
-        Id_unescape            = 12,
-        Id_uneval              = 13,
+        Id_parseFloat          =  9,
+        Id_parseInt            = 10,
+        Id_unescape            = 11,
+        Id_uneval              = 12,
 
-        LAST_SCOPE_FUNCTION_ID = 13,
+        LAST_SCOPE_FUNCTION_ID = 12,
 
-        Id_new_CommonError     = 14;
+        Id_new_CommonError     = 13;
 }

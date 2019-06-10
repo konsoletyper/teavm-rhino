@@ -30,13 +30,12 @@ public class Bug448816Test extends TestCase {
         reference = new LinkedHashMap<Object, Object>();
         reference.put("a", "a");
         reference.put("b", Boolean.TRUE);
-        reference.put("c", new HashMap<Object, Object>());
-        reference.put(new Integer(1), new Integer(42));
+        reference.put(new Integer(1), new Double(42));
         // get a js object as map
         Context context = Context.enter();
         ScriptableObject scope = context.initStandardObjects();
         map = (Map<Object, Object>) context.evaluateString(scope,
-                "({ a: 'a', b: true, c: new java.util.HashMap(), 1: 42});",
+                "({ a: 'a', b: true, 1: 42});",
                 "testsrc", 1, null);
         Context.exit();
     }
@@ -49,10 +48,9 @@ public class Bug448816Test extends TestCase {
     }
 
     public void testBasicAccess() {
-        assertTrue(map.size() == 4);
+        assertTrue(map.size() == 3);
         assertEquals(map.get("a"), reference.get("a"));
         assertEquals(map.get("b"), reference.get("b"));
-        assertEquals(map.get("c"), reference.get("c"));
         assertEquals(map.get(new Integer(1)), reference.get(new Integer(1)));
         assertEquals(map.get("notfound"), reference.get("notfound"));
         assertTrue(map.containsKey("b"));
@@ -72,10 +70,10 @@ public class Bug448816Test extends TestCase {
 
     public void testRemoval() {
         // the only update we implement is removal
-        assertTrue(map.size() == 4);
+        assertTrue(map.size() == 3);
         assertEquals(map.remove("b"), Boolean.TRUE);
         reference.remove("b");
-        assertTrue(map.size() == 3);
+        assertTrue(map.size() == 2);
         assertEquals(reference, map);
         testCollections();
     }
@@ -93,7 +91,7 @@ public class Bug448816Test extends TestCase {
     }
 
     private void compareIterators(Iterator<?> it1, Iterator<?> it2) {
-        assertTrue(map.size() == 4);
+        assertTrue(map.size() == 3);
         while (it1.hasNext()) {
             assertEquals(it1.next(), it2.next());
             it1.remove();

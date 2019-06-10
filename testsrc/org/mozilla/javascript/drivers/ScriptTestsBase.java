@@ -10,6 +10,7 @@ import org.junit.runners.BlockJUnit4ClassRunner;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.JavaScriptException;
 import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.tests.TestScopeUtil;
 
 import java.io.*;
 
@@ -51,7 +52,7 @@ public abstract class ScriptTestsBase {
             cx.setOptimizationLevel(optLevel);
             cx.setLanguageVersion(jsVersion);
 
-            Scriptable global = cx.initStandardObjects();
+            Scriptable global = TestScopeUtil.createScope(cx);
 
             Scriptable scope = cx.newObject(global);
             scope.setPrototype(global);

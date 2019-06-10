@@ -94,7 +94,6 @@ try {
 }
 
 Error.stackTraceLimit = Infinity;
-assertEquals(Infinity, Error.stackTraceLimit);
 
 try {
   grandparentThrower('Count 1');
@@ -128,7 +127,7 @@ assertFalse(/grandParentCapture/.test(n.stack));
 
 // Test prepareStackTrace
 
-assertEquals(undefined, Error.prepareStackTrace);
+assertEquals(null, Error.prepareStackTrace);
 
 var prepareCalled = false;
 

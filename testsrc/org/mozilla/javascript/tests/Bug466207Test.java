@@ -31,14 +31,13 @@ public class Bug466207Test extends TestCase {
         reference = new ArrayList<Object>();
         reference.add("a");
         reference.add(Boolean.TRUE);
-        reference.add(new HashMap<Object, Object>());
-        reference.add(new Integer(42));
+        reference.add(new Double(42));
         reference.add("a");
         // get a js object as map
         Context context = Context.enter();
         ScriptableObject scope = context.initStandardObjects();
         list = (List<Object>) context.evaluateString(scope,
-                "(['a', true, new java.util.HashMap(), 42, 'a']);",
+                "(['a', true, 42, 'a']);",
                 "testsrc", 1, null);
         Context.exit();
     }
@@ -51,12 +50,11 @@ public class Bug466207Test extends TestCase {
     }
 
     public void testIndexedAccess() {
-        assertTrue(list.size() == 5);
+        assertTrue(list.size() == 4);
         assertEquals(list.get(0), reference.get(0));
         assertEquals(list.get(1), reference.get(1));
         assertEquals(list.get(2), reference.get(2));
         assertEquals(list.get(3), reference.get(3));
-        assertEquals(list.get(4), reference.get(4));
     }
 
     public void testContains() {
@@ -70,7 +68,7 @@ public class Bug466207Test extends TestCase {
     public void testIndexOf() {
         assertTrue(list.indexOf("a") == 0);
         assertTrue(list.indexOf(Boolean.TRUE) == 1);
-        assertTrue(list.lastIndexOf("a") == 4);
+        assertTrue(list.lastIndexOf("a") == 3);
         assertTrue(list.lastIndexOf(Boolean.TRUE) == 1);
         assertTrue(list.indexOf("x") == -1);
         assertTrue(list.lastIndexOf("x") == -1);
@@ -89,11 +87,11 @@ public class Bug466207Test extends TestCase {
         compareIterators(list.listIterator(), reference.listIterator());
         compareIterators(list.listIterator(2), reference.listIterator(2));
         compareIterators(list.listIterator(3), reference.listIterator(3));
-        compareIterators(list.listIterator(5), reference.listIterator(5));
+        compareIterators(list.listIterator(4), reference.listIterator(4));
         compareListIterators(list.listIterator(), reference.listIterator());
         compareListIterators(list.listIterator(2), reference.listIterator(2));
         compareListIterators(list.listIterator(3), reference.listIterator(3));
-        compareListIterators(list.listIterator(5), reference.listIterator(5));
+        compareListIterators(list.listIterator(4), reference.listIterator(4));
     }
 
     private void compareIterators(Iterator<Object> it1, Iterator<Object> it2) {

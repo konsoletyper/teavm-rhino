@@ -65,7 +65,7 @@ public class DynamicScopeTest extends TestCase {
             final ScriptableObject scope = cx.initStandardObjects(new TopLevel(), true); 
             
             Object result = cx.evaluateString(scope, "42", "source", 1, null);
-            assertEquals(42, result);
+            assertEquals(42.0, result);
         } finally {
             // cx.exit();
         }

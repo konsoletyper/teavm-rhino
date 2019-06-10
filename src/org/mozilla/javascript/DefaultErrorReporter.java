@@ -11,7 +11,7 @@ package org.mozilla.javascript;
  *
  * @author Norris Boyd
  */
-class DefaultErrorReporter implements ErrorReporter
+public class DefaultErrorReporter implements ErrorReporter
 {
     static final DefaultErrorReporter instance = new DefaultErrorReporter();
 
@@ -20,7 +20,7 @@ class DefaultErrorReporter implements ErrorReporter
 
     private DefaultErrorReporter() { }
 
-    static ErrorReporter forEval(ErrorReporter reporter)
+    public static ErrorReporter forEval(ErrorReporter reporter)
     {
         DefaultErrorReporter r = new DefaultErrorReporter();
         r.forEval = true;

@@ -162,6 +162,7 @@ final class NativeError extends IdScriptableObject
         // the getter and setter below.
         if (stackProvider == null) {
             stackProvider = re;
+            defineProperty("stack", Undefined.instance, 0);
             defineProperty(Context.getContext(), "stack",
                 new CallableFunction((cx, scope, thisObj, args) -> getStackDelegated(thisObj)),
                 new CallableFunction((cx, scope, thisObj, args) -> {
@@ -209,8 +210,7 @@ final class NativeError extends IdScriptableObject
 
     public void setStackDelegated(Scriptable target, Object value) {
         target.delete("stack");
-        stackProvider = null;
-        target.put("stack", target, value);
+        ((NativeError) target).defineProperty("stack", value, 0);
     }
 
     private Object callPrepareStack(Function prepare, ScriptStackElement[] stack)
@@ -314,6 +314,19 @@ final class NativeError extends IdScriptableObject
                 err.associateValue(STACK_HIDE_KEY, Context.toString(funcName));
             }
         }
+
+        // Define a property on the specified object to get that stack
+        // that delegates to our new error. Build the stack trace lazily
+        // using the "getStack" code from NativeError.
+        obj.defineProperty("stack", Undefined.instance, 0);
+        obj.defineProperty(Context.getContext(), "stack",
+            new CallableFunction((cx2, scope, thisObj2, args2) -> err.getStackDelegated(err)),
+            new CallableFunction((cx2, scope, thisObj2, args2) -> {
+                err.setStackDelegated(err, args2[0]);
+                return Undefined.instance;
+            }),
+            0
+        );
     }
 
     @Override
@@ -360,7 +373,7 @@ final class NativeError extends IdScriptableObject
         private static final long serialVersionUID = 1907180507775337939L;
 
         private int stackTraceLimit = DEFAULT_STACK_LIMIT;
-        private Function prepareStackTrace;
+        private Function prepareStackTrace  ;
 
         public Object getStackTraceLimit(Scriptable thisObj) {
             if (stackTraceLimit >= 0) {

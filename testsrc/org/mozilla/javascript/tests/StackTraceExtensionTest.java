@@ -45,7 +45,7 @@ public class StackTraceExtensionTest
             cx.setOptimizationLevel(opt);
             cx.setGeneratingDebug(true);
 
-            Scriptable global = cx.initStandardObjects();
+            Scriptable global = TestScopeUtil.createScope(cx);
             Scriptable root = cx.newObject(global);
 
             FileReader rdr = new FileReader("testsrc/jstests/extensions/stack-traces.js");

@@ -71,7 +71,7 @@ public class ComparatorTest {
     throws IOException
   {
     Context cx = Context.enter();
-    Scriptable root = cx.newObject(cx.initStandardObjects());
+    Scriptable root = cx.newObject(TestScopeUtil.createScope(cx));
     FileReader fr = new FileReader("testsrc/jstests/extensions/custom-comparators.js");
 
     try {
