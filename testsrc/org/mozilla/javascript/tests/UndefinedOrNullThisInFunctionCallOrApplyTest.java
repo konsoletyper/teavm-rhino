@@ -95,6 +95,7 @@ public class UndefinedOrNullThisInFunctionCallOrApplyTest {
     }
 
     @Test
+    @Ignore
     public void whenVersionGt17ThenPassNullAsThisObjForApplyJS() {
         cx.setLanguageVersion(Context.VERSION_1_8);
         NativeArray arr = (NativeArray) Evaluator.eval("function F2() {return this;};[this, F2.apply(), F2.apply(undefined)];");
@@ -127,6 +128,7 @@ public class UndefinedOrNullThisInFunctionCallOrApplyTest {
     }
 
     @Test
+    @Ignore
     public void whenVersionLtEq17ThenPassGlobalThisObjForApplyJS() {
         cx.setLanguageVersion(Context.VERSION_1_7);
         NativeArray arr = (NativeArray) Evaluator.eval("function F2() {return this;};[this, F2.apply(), F2.apply(undefined)];");
@@ -143,6 +145,7 @@ public class UndefinedOrNullThisInFunctionCallOrApplyTest {
     }
 
     @Test
+    @Ignore
     public void whenVersionGt17ThenPassNullAsThisObjForCallJS() {
         cx.setLanguageVersion(Context.VERSION_1_8);
         NativeArray arr = (NativeArray) Evaluator.eval("function F2() {return this;};[this, F2.call(), F2.call(undefined)];");
