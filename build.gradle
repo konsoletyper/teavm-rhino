@@ -12,10 +12,6 @@ targetCompatibility = 1.8
 
 tasks.withType(JavaCompile) { options.encoding = "UTF-8" }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.3.1'
-}
-
 repositories {
     mavenCentral()
     mavenLocal()
@@ -130,7 +126,7 @@ jar {
 javadoc {
     options.addBooleanOption("-allow-script-in-comments", true)
     options.addStringOption('Xdoclint:html', '-quiet')
-
+    options.addStringOption('Xdoclint:none', '-quiet')
 }
 
 task javadocJar(type: Jar) {
