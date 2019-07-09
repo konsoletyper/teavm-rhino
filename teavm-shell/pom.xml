@@ -85,7 +85,7 @@
               <mainClass>org.teavm.examples.rhino.Main</mainClass>
               <targetDirectory>${project.build.directory}/generated/c</targetDirectory>
               <debugInformationGenerated>false</debugInformationGenerated>
-              <optimizationLevel>ADVANCED</optimizationLevel>
+              <optimizationLevel>FULL</optimizationLevel>
               <heapSize>512</heapSize>
               <targetType>C</targetType>
             </configuration>
