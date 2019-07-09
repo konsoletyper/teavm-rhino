@@ -72,7 +72,7 @@
               <mainClass>org.teavm.examples.rhino.JsMain</mainClass>
               <targetDirectory>${project.build.directory}/generated/js</targetDirectory>
               <minifying>true</minifying>
-              <optimizationLevel>FULL</optimizationLevel>
+              <optimizationLevel>ADVANCED</optimizationLevel>
             </configuration>
           </execution>
           <execution>
@@ -82,11 +82,10 @@
             </goals>
             <phase>process-classes</phase>
             <configuration>
-              <mainClass>org.teavm.examples.rhino.CMain</mainClass>
+              <mainClass>org.teavm.examples.rhino.Main</mainClass>
               <targetDirectory>${project.build.directory}/generated/c</targetDirectory>
-              <minifying>true</minifying>
-              <debugInformationGenerated>true</debugInformationGenerated>
-              <optimizationLevel>FULL</optimizationLevel>
+              <debugInformationGenerated>false</debugInformationGenerated>
+              <optimizationLevel>ADVANCED</optimizationLevel>
               <heapSize>512</heapSize>
               <targetType>C</targetType>
             </configuration>

@@ -10,8 +10,16 @@ import java.nio.charset.StandardCharsets;
 
 public class Main {
   public static void main(String[] args) {
+    if (args.length != 1) {
+      System.err.println("Single parameter expected");
+      return;
+    }
+
     try {
       String script = readFile(args[0]);
+      if (script == null) {
+        return;
+      }
 
       Context context = Context.enter();
       context.setOptimizationLevel(-1);
@@ -27,18 +35,24 @@ public class Main {
     }
   }
 
-  private static String readFile(String name) throws IOException {
+
+  private static String readFile(String fileName) {
     StringBuilder sb = new StringBuilder();
     char[] buf = new char[2048];
-    try (Reader reader = new InputStreamReader(new FileInputStream(name), StandardCharsets.UTF_8)) {
+    try (FileInputStream input = new FileInputStream(fileName);
+         Reader reader = new InputStreamReader(input, StandardCharsets.UTF_8)) {
       while (true) {
         int charsRead = reader.read(buf);
-        if (charsRead == -1) {
+        if (charsRead < 0) {
           break;
         }
         sb.append(buf, 0, charsRead);
       }
+    } catch (IOException e) {
+      System.err.println("Error occurred reading file " + fileName);
+      return null;
     }
+
     return sb.toString();
   }
 }
